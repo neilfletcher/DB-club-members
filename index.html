@@ -201,10 +201,12 @@
   .msg.bad { color: var(--danger-text); }
   .msg.good { color: var(--success-text); }
 
-  .range-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .range-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .range-cols h3.warn-head { color: var(--warning-text); }
   .range-cols ol { margin: 0; padding-left: 22px; font-size: 0.92rem; line-height: 1.8; }
   .range-cols .why { color: var(--text-muted); font-size: 0.76rem; }
-  @media (max-width: 640px) { .range-cols { grid-template-columns: 1fr; } }
+  @media (max-width: 800px) { .range-cols { grid-template-columns: 1fr; } }
+  @media print { .range-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
   .signin { max-width: 520px; margin: 40px auto; text-align: left; }
   #gsiButton { margin-top: 14px; min-height: 44px; }
@@ -302,12 +304,28 @@
   }
 
   // ---------------------------------------------------------------- service
-  function api(body) {
-    return fetch(SERVICE_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ token: state.token }, body)) })
-      .then(function (r) { return r.json(); });
+  // Actions that are safe to repeat if the connection drops part-way.
+  const RETRY_SAFE = { list: 1, previewReminder: 1, checkNow: 1, setSetting: 1, update: 1, duesMany: 1 };
+  function api(body, attempt) {
+    attempt = attempt || 1;
+    const ctrl = window.AbortController ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 60000) : null;
+    return fetch(SERVICE_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ token: state.token }, body)), signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        clearTimeout(timer);
+        try { return JSON.parse(text); } catch (e) { throw new Error("bad-reply"); } // Google sometimes answers with an error page
+      })
+      .catch(function (err) {
+        clearTimeout(timer);
+        if (attempt < 2 && RETRY_SAFE[body.action]) {
+          return new Promise(function (r) { setTimeout(r, 1200); }).then(function () { return api(body, attempt + 1); });
+        }
+        throw err;
+      });
   }
   function call(body, okMsg) {
-    state.busy = true; state.msg = null; render();
+    state.busy = body.action === "list" ? "Loading..." : "Saving..."; state.msg = null; render();
     return api(body).then(function (res) {
       state.busy = false;
       if (!res || !res.ok) {
@@ -321,9 +339,11 @@
       if (okMsg) state.msg = { bad: false, text: typeof okMsg === "function" ? okMsg(res) : okMsg };
       render();
       return res;
-    }).catch(function () {
+    }).catch(function (err) {
       state.busy = false;
-      state.msg = { bad: true, text: "Couldn't reach the membership service. Check your connection and try again." };
+      state.msg = { bad: true, text: err && err.name === "AbortError"
+        ? "The membership service took too long to answer. Please try again."
+        : "Couldn't reach the membership service (it may be busy for a moment). Please try again." + (RETRY_SAFE[body.action] ? "" : " Check the page before repeating, in case it went through.") };
       render();
       return null;
     });
@@ -344,22 +364,40 @@
     });
     return gisPromise;
   }
+  // The Google sign-in is remembered for this browser tab only (until it
+  // expires, about an hour), so reloading the page doesn't ask again.
+  function tokenExpiry(t) {
+    try { return JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp * 1000; } catch (e) { return 0; }
+  }
+  function saveToken(t) { try { if (t) sessionStorage.setItem("dbmToken", t); else sessionStorage.removeItem("dbmToken"); } catch (e) {} }
+  function savedToken() {
+    try { const t = sessionStorage.getItem("dbmToken"); return t && tokenExpiry(t) > Date.now() + 120000 ? t : null; } catch (e) { return null; }
+  }
   function onCredential(resp) {
     state.token = resp.credential;
     state.error = "";
+    saveToken(resp.credential);
     call({ action: "list" });
   }
   function drawSignIn() {
     const el = document.getElementById("gsiButton");
     if (!el) return;
     loadGis().then(function () {
-      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onCredential, auto_select: false, ux_mode: "popup" });
+      if (!gisReady) {
+        // auto_select signs a returning committee member straight back in.
+        google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onCredential, auto_select: !signedOut, ux_mode: "popup", use_fedcm_for_prompt: true });
+        gisReady = true;
+        if (!signedOut) google.accounts.id.prompt();
+      }
       const dark = matchMedia("(prefers-color-scheme: dark)").matches;
       google.accounts.id.renderButton(el, { theme: dark ? "filled_black" : "outline", size: "large", text: "signin_with" });
     }).catch(function (err) { el.innerHTML = '<p class="msg bad">' + esc(err.message) + "</p>"; });
   }
+  let gisReady = false, signedOut = false;
   function signOut(why) {
     if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
+    saveToken(null);
+    signedOut = true;
     state.token = null; state.data = null; state.email = null; state.selected = null; state.picked = {};
     state.error = why || "";
     render();
@@ -548,16 +586,29 @@
 
   function viewRange(d) {
     const act = d.members.filter(function (m) { return !m.left; }).sort(byName);
-    const yes = act.filter(function (m) { return m.cleared; });
+    const lapsing = function (m) { return m.agbState === "due" || m.duesState === "due"; };
+    const yes = act.filter(function (m) { return m.cleared && !lapsing(m); });
+    const soon = act.filter(function (m) { return m.cleared && lapsing(m); });
     const no = act.filter(function (m) { return !m.cleared; });
+    const soonWhy = function (m) {
+      const out = [];
+      if (m.agbState === "due") out.push("AGB runs out " + uk(m.expiry) + " (" + inDays(m.agbDays) + ")");
+      if (m.duesState === "due") out.push("Club dues due " + uk(m.duesDue) + " (" + inDays(m.duesDays) + ")");
+      return out.join("; ");
+    };
+    const list = function (arr, why, empty) {
+      return arr.length ? "<ol>" + arr.map(function (m) {
+        return "<li>" + esc(name(m)) + ' <span class="muted small">' + esc(m.agb) + "</span>" + (why ? '<div class="why">' + esc(why(m)) + "</div>" : "") + "</li>";
+      }).join("") + "</ol>" : '<p class="muted small">' + empty + "</p>";
+    };
     return exportBanner(d) +
-      '<div class="card"><div class="card-head"><div><h2>Cleared to shoot: ' + esc(uk(d.today)) + '</h2><p class="card-note">Current Archery GB membership and club dues paid. If someone says they\'ve renewed, their AGB e-card QR code shows their live status.</p></div>' +
+      '<div class="card"><div class="card-head"><div><h2>Cleared to shoot: ' + esc(uk(d.today)) + '</h2><p class="card-note">Current Archery GB membership and club dues paid. "About to lapse" are cleared today, but their AGB membership or club dues run out in the next ' + d.dueSoonDays + " days. If someone says they've renewed, their AGB e-card QR code shows their live status.</p></div>" +
       '<button class="btn no-print" data-act="print">Print</button></div>' +
-      '<div class="range-cols"><div><h3>Cleared (' + yes.length + ")</h3>" +
-      (yes.length ? "<ol>" + yes.map(function (m) { return "<li>" + esc(name(m)) + ' <span class="muted small">' + esc(m.agb) + "</span></li>"; }).join("") + "</ol>" : '<p class="muted small">Nobody yet.</p>') +
-      "</div><div><h3>Not cleared (" + no.length + ")</h3>" +
-      (no.length ? "<ol>" + no.map(function (m) { return "<li>" + esc(name(m)) + ' <div class="why">' + esc(m.reasons.join("; ")) + "</div></li>"; }).join("") + "</ol>" : '<p class="muted small">Nobody.</p>') +
-      "</div></div></div>";
+      '<div class="range-cols">' +
+      "<div><h3>Cleared (" + yes.length + ")</h3>" + list(yes, null, "Nobody yet.") + "</div>" +
+      '<div><h3 class="warn-head">About to lapse (' + soon.length + ")</h3>" + list(soon, soonWhy, "Nobody in the next " + d.dueSoonDays + " days.") + "</div>" +
+      "<div><h3>Not cleared (" + no.length + ")</h3>" + list(no, function (m) { return m.reasons.join("; "); }, "Nobody.") + "</div>" +
+      "</div></div>";
   }
 
   function viewImport(d) {
@@ -620,7 +671,7 @@
     if (!d) {
       tabsEl.hidden = true;
       head.innerHTML = "";
-      status.textContent = state.busy ? "Loading the register..." : "";
+      status.textContent = state.busy ? "Loading the register (the first load can take a few seconds)..." : "";
       main.innerHTML = state.busy && state.token ? '<div class="card"><p class="muted">Loading the register...</p></div>' : viewSignIn();
       if (!state.token) drawSignIn();
       return;
@@ -632,7 +683,7 @@
       return '<button role="tab" data-tab="' + t.key + '" aria-selected="' + (t.key === state.tab) + '">' + esc(t.label) + (count !== "" ? '<span class="count">' + esc(count) + "</span>" : "") + "</button>";
     }).join("");
     head.innerHTML = '<span class="muted small">' + esc(state.email || "") + '</span> <button class="btn" data-act="refresh">Refresh</button> <button class="btn" data-act="signout">Sign out</button>';
-    status.textContent = "Today " + uk(d.today) + (d.lastExportDate ? " · export of " + uk(d.lastExportDate) : "");
+    status.textContent = state.busy ? String(state.busy) : "Today " + uk(d.today) + (d.lastExportDate ? " · export of " + uk(d.lastExportDate) : "");
     const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails }[state.tab];
     let html = "";
     if (state.msg && !state.msgFor) html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
@@ -909,7 +960,9 @@
     });
   }
 
-  render();
+  const remembered = savedToken();
+  if (remembered) onCredential({ credential: remembered });
+  else render();
 })();
 </script>
 </body>
