@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-JF54HQGVLT"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  // Page views only: no names or member details are ever sent.
+  gtag('config', 'G-JF54HQGVLT', { page_location: location.origin + location.pathname, page_title: 'Duston Bowmen Membership' });
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Duston Bowmen Membership</title>
+<meta name="description" content="Duston Bowmen committee membership register: Archery GB renewals, club dues and who is cleared to shoot.">
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23ffffff' stroke='%23222' stroke-width='1'/%3E%3Ccircle cx='16' cy='16' r='12' fill='%23222'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%232a78d6'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23e5322d'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23f5c518'/%3E%3C/svg%3E">
+<script>
+  // Site settings: the membership service's web app address and the Google sign-in client (same as the records site).
+  window.MEMBERS_SERVICE_URL = "https://script.google.com/macros/s/AKfycbxWTENIImuVb0GlK1KBJnVmJdFZa0o4Y12RouQWSiYN6JlACLUfCl1T4uoK-n2DdqrhUw/exec";
+  window.MEMBERS_GOOGLE_CLIENT_ID = "29858523179-m3aqpk9n6er8mttn0isii75hd67pnnpj.apps.googleusercontent.com";
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #6f6e69;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --card-border:    rgba(11,11,11,0.08);
+    --success-text:   #006300;
+    --success-bg:     #e7f4e4;
+    --warning-text:   #8a5c00;
+    --warning-bg:     #fbf1dc;
+    --danger-text:    #b3261e;
+    --danger-bg:      #fbe7e5;
+    --focus:          #2a78d6;
+    --accent:         #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #9a9891;
+      --gridline:       #2c2c2a;
+      --baseline:       #4a4a46;
+      --border:         rgba(255,255,255,0.10);
+      --card-border:    rgba(255,255,255,0.10);
+      --success-text:   #3cc03c;
+      --success-bg:     #12260f;
+      --warning-text:   #e0a030;
+      --warning-bg:     #2a2010;
+      --danger-text:    #ff8a80;
+      --danger-bg:      #2e1412;
+      --focus:          #6aa7f0;
+      --accent:         #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #9a9891;
+    --gridline:       #2c2c2a;
+    --baseline:       #4a4a46;
+    --border:         rgba(255,255,255,0.10);
+    --card-border:    rgba(255,255,255,0.10);
+    --success-text:   #3cc03c;
+    --success-bg:     #12260f;
+    --warning-text:   #e0a030;
+    --warning-bg:     #2a2010;
+    --danger-text:    #ff8a80;
+    --danger-bg:      #2e1412;
+    --focus:          #6aa7f0;
+    --accent:         #3987e5;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+
+  header.page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--text-secondary); font-size: 0.92rem; margin: 0; }
+  .status-line { color: var(--text-muted); font-size: 0.8rem; margin-top: 6px; }
+  .head-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  button.btn, a.btn {
+    display: inline-block; text-decoration: none;
+    background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; font: inherit; font-size: 0.82rem; cursor: pointer; line-height: 1.2;
+  }
+  button.btn:hover { background: var(--page-plane); }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn.primary:hover { filter: brightness(1.08); }
+  button.btn.small { padding: 4px 8px; font-size: 0.76rem; }
+  button.btn:disabled { opacity: 0.55; cursor: default; }
+
+  nav.tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--gridline); margin-bottom: 20px; }
+  nav.tabs button {
+    background: none; border: none; cursor: pointer; font-family: inherit; font-size: 0.88rem; font-weight: 600;
+    color: var(--text-secondary); padding: 10px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  nav.tabs button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+  nav.tabs button:hover { color: var(--text-primary); }
+  nav.tabs .count { font-weight: 500; color: var(--text-muted); margin-left: 4px; }
+
+  .card { background: var(--surface-1); border: 1px solid var(--card-border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+  .card h2 { font-size: 1.02rem; margin: 0 0 4px; }
+  .card h3 { font-size: 0.92rem; margin: 16px 0 8px; color: var(--text-secondary); font-weight: 600; }
+  .card-note { color: var(--text-muted); font-size: 0.8rem; margin: 2px 0 14px; line-height: 1.5; }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+
+  .banner { border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-size: 0.86rem; line-height: 1.5; border: 1px solid transparent; }
+  .banner.warn { background: var(--warning-bg); color: var(--warning-text); }
+  .banner.bad { background: var(--danger-bg); color: var(--danger-text); }
+  .banner.good { background: var(--success-bg); color: var(--success-text); }
+  .banner.info { background: var(--surface-1); border-color: var(--card-border); color: var(--text-secondary); }
+  .banner strong { color: inherit; }
+
+  .tile-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px 16px; min-width: 0; text-align: left; font: inherit; color: inherit; }
+  button.tile { cursor: pointer; }
+  button.tile:hover { border-color: var(--baseline); }
+  .tile .label { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .tile .value { font-size: 1.5rem; font-weight: 650; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .tile .value.good { color: var(--success-text); }
+  .tile .value.warn { color: var(--warning-text); }
+  .tile .value.bad { color: var(--danger-text); }
+  .tile .hint { font-size: 0.74rem; color: var(--text-secondary); margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  thead th {
+    text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.02em;
+    color: var(--text-muted); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--gridline);
+    position: sticky; top: 0; background: var(--surface-1); white-space: nowrap;
+  }
+  tbody td { padding: 8px 10px; border-bottom: 1px solid var(--gridline); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.clickable { cursor: pointer; }
+  tbody tr.clickable:hover td { background: var(--page-plane); }
+  tbody tr.selected td { background: var(--page-plane); }
+  td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
+  td.nowrap { white-space: nowrap; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--gridline); border-radius: 8px; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 0.76rem; }
+
+  .pill { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--baseline); color: var(--text-secondary); }
+  .pill.good { background: var(--success-bg); color: var(--success-text); border-color: transparent; }
+  .pill.warn { background: var(--warning-bg); color: var(--warning-text); border-color: transparent; }
+  .pill.bad { background: var(--danger-bg); color: var(--danger-text); border-color: transparent; }
+  .mark { font-weight: 700; }
+  .mark.good { color: var(--success-text); }
+  .mark.bad { color: var(--danger-text); }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  input[type="search"], input[type="text"], input[type="email"], input[type="date"], textarea, select {
+    font: inherit; font-size: 0.86rem; color: var(--text-primary); background: var(--page-plane);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; max-width: 100%;
+  }
+  input[type="search"] { min-width: 220px; flex: 1 1 220px; }
+  textarea { width: 100%; min-height: 64px; resize: vertical; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { font: inherit; font-size: 0.78rem; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--text-primary); color: var(--page-plane); border-color: var(--text-primary); }
+  .chip .n { opacity: 0.7; margin-left: 3px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; margin: 10px 0 14px; }
+  .field label { display: block; font-size: 0.74rem; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .field .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .field input { width: 100%; }
+  .field .row input { width: auto; flex: 1 1 140px; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 0.86rem; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; margin: 12px 0; }
+  .facts div { font-size: 0.84rem; }
+  .facts .k { display: block; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 2px; }
+  ul.reasons { margin: 6px 0 0; padding-left: 18px; font-size: 0.84rem; }
+  pre.email { white-space: pre-wrap; font-family: inherit; font-size: 0.84rem; line-height: 1.5; background: var(--page-plane); border: 1px solid var(--gridline); border-radius: 8px; padding: 12px 14px; margin: 6px 0 0; max-height: 360px; overflow: auto; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+  .msg { font-size: 0.84rem; margin: 8px 0 0; }
+  .msg.bad { color: var(--danger-text); }
+  .msg.good { color: var(--success-text); }
+
+  .range-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .range-cols ol { margin: 0; padding-left: 22px; font-size: 0.92rem; line-height: 1.8; }
+  .range-cols .why { color: var(--text-muted); font-size: 0.76rem; }
+  @media (max-width: 640px) { .range-cols { grid-template-columns: 1fr; } }
+
+  .signin { max-width: 520px; margin: 40px auto; text-align: left; }
+  #gsiButton { margin-top: 14px; min-height: 44px; }
+  footer.foot { color: var(--text-muted); font-size: 0.76rem; margin-top: 28px; line-height: 1.5; }
+  .busy-bar { height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: 200% 100%; animation: slide 1.1s linear infinite; position: fixed; top: 0; left: 0; right: 0; z-index: 10; }
+  @keyframes slide { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .busy-bar { animation: none; } }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    header.page-head .head-controls, nav.tabs, footer.foot, .no-print, .busy-bar { display: none !important; }
+    .card { border: none; padding: 0; }
+    .wrap { padding: 0; max-width: none; }
+    .pill, .mark { color: #000 !important; background: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="busy" class="busy-bar" hidden></div>
+<div class="wrap">
+  <header class="page-head">
+    <div>
+      <h1>Duston Bowmen membership</h1>
+      <p class="sub">Archery GB renewals, club dues and who is cleared to shoot. Committee only.</p>
+      <div class="status-line" id="statusLine"></div>
+    </div>
+    <div class="head-controls" id="headControls"></div>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" hidden></nav>
+  <main id="main"></main>
+  <footer class="foot">
+    Member details come from the Archery GB (Sport:80) export and are kept in the committee's private register. Nothing is stored in this browser.
+    Addresses, dates of birth and membership types are never kept.
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+<script>
+(function () {
+  "use strict";
+  const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
+  const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
+
+  const TABS = [
+    { key: "overview", label: "Overview" },
+    { key: "members", label: "Members" },
+    { key: "range", label: "Cleared to shoot" },
+    { key: "import", label: "Import" },
+    { key: "emails", label: "Emails" }
+  ];
+  const FILTERS = [
+    { key: "all", label: "All", test: function (m) { return !m.left; } },
+    { key: "notcleared", label: "Not cleared", test: function (m) { return !m.left && !m.cleared; } },
+    { key: "agbdue", label: "AGB due soon", test: function (m) { return !m.left && m.agbState === "due"; } },
+    { key: "agbgone", label: "AGB expired or lapsed", test: function (m) { return !m.left && (m.agbState === "expired" || m.agbState === "lapsed" || m.agbState === "unknown"); } },
+    { key: "dues", label: "Club dues owed", test: function (m) { return !m.left && (m.duesState === "unpaid" || m.duesState === "overdue"); } },
+    { key: "duesdue", label: "Club dues due soon", test: function (m) { return !m.left && m.duesState === "due"; } },
+    { key: "missing", label: "Not in latest export", test: function (m) { return m.missing; } },
+    { key: "under18", label: "Under 18", test: function (m) { return !m.left && m.under18; } },
+    { key: "left", label: "Left the club", test: function (m) { return m.left; } }
+  ];
+
+  const state = {
+    token: null, email: null, data: null, error: "", busy: false,
+    tab: (location.hash || "").replace("#", "") || "overview",
+    filter: "all", search: "", selected: null, picked: {}, msg: null, uploadMsg: null
+  };
+  if (!TABS.some(function (t) { return t.key === state.tab; })) state.tab = "overview";
+
+  // ---------------------------------------------------------------- helpers
+  function esc(s) { return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function uk(d) { if (!d || !/^\d{4}-\d{2}-\d{2}/.test(d)) return d || ""; const a = d.split("-"); return +a[2].slice(0, 2) + " " + MONTHS[a[1] - 1] + " " + a[0]; }
+  function daysBetween(a, b) { const x = a.split("-"), y = b.split("-"); return Math.round((Date.UTC(+y[0], y[1] - 1, +y[2]) - Date.UTC(+x[0], x[1] - 1, +x[2])) / 864e5); }
+  function inDays(n) { return n === 0 ? "today" : n === 1 ? "tomorrow" : n === -1 ? "yesterday" : n > 0 ? "in " + n + " days" : Math.abs(n) + " days ago"; }
+  function name(m) { return (m.first + " " + m.last).trim() || "(no name)"; }
+  function byName(a, b) { return (a.last + " " + a.first).toLowerCase() < (b.last + " " + b.first).toLowerCase() ? -1 : 1; }
+  function todayLocal() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+
+  function agbPill(m) {
+    if (m.agbState === "ok") return '<span class="pill good">Current</span>';
+    if (m.agbState === "due") return '<span class="pill warn">Due ' + esc(inDays(m.agbDays)) + "</span>";
+    if (m.agbState === "expired") return '<span class="pill bad">Expired, check</span>';
+    if (m.agbState === "lapsed") return '<span class="pill bad">Lapsed</span>';
+    return '<span class="pill">Unknown</span>';
+  }
+  function duesPill(m) {
+    if (m.duesState === "ok") return '<span class="pill good">Paid</span>';
+    if (m.duesState === "due") return '<span class="pill warn">Due ' + esc(inDays(m.duesDays)) + "</span>";
+    if (m.duesState === "overdue") return '<span class="pill bad">Overdue</span>';
+    return '<span class="pill bad">Not recorded</span>';
+  }
+  function clearedMark(m) {
+    return m.cleared ? '<span class="mark good" title="Cleared to shoot">&#10003; Yes</span>' : '<span class="mark bad" title="Not cleared to shoot">&#10007; No</span>';
+  }
+
+  // ---------------------------------------------------------------- service
+  function api(body) {
+    return fetch(SERVICE_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ token: state.token }, body)) })
+      .then(function (r) { return r.json(); });
+  }
+  function call(body, okMsg) {
+    state.busy = true; state.msg = null; render();
+    return api(body).then(function (res) {
+      state.busy = false;
+      if (!res || !res.ok) {
+        if (res && res.error === "not-admin") { signOut("That Google account isn't on the committee list, or your sign-in has expired. Please sign in again."); return null; }
+        state.msg = { bad: true, text: (res && res.error) || "The request failed." };
+        render();
+        return null;
+      }
+      state.data = res;
+      state.email = res.email || state.email;
+      if (okMsg) state.msg = { bad: false, text: typeof okMsg === "function" ? okMsg(res) : okMsg };
+      render();
+      return res;
+    }).catch(function () {
+      state.busy = false;
+      state.msg = { bad: true, text: "Couldn't reach the membership service. Check your connection and try again." };
+      render();
+      return null;
+    });
+  }
+
+  // ---------------------------------------------------------------- sign-in
+  let gisPromise = null;
+  function loadGis() {
+    if (gisPromise) return gisPromise;
+    gisPromise = new Promise(function (resolve, reject) {
+      if (window.google && google.accounts && google.accounts.id) { resolve(); return; }
+      const s = document.createElement("script");
+      s.src = "https://accounts.google.com/gsi/client";
+      s.async = true;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { gisPromise = null; reject(new Error("Google sign-in couldn't load.")); };
+      document.head.appendChild(s);
+    });
+    return gisPromise;
+  }
+  function onCredential(resp) {
+    state.token = resp.credential;
+    state.error = "";
+    call({ action: "list" });
+  }
+  function drawSignIn() {
+    const el = document.getElementById("gsiButton");
+    if (!el) return;
+    loadGis().then(function () {
+      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onCredential, auto_select: false, ux_mode: "popup" });
+      const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+      google.accounts.id.renderButton(el, { theme: dark ? "filled_black" : "outline", size: "large", text: "signin_with" });
+    }).catch(function (err) { el.innerHTML = '<p class="msg bad">' + esc(err.message) + "</p>"; });
+  }
+  function signOut(why) {
+    if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
+    state.token = null; state.data = null; state.email = null; state.selected = null; state.picked = {};
+    state.error = why || "";
+    render();
+  }
+  window.__membersTestSignIn = function (token) { onCredential({ credential: token }); };
+
+  // ---------------------------------------------------------------- views
+  function viewSignIn() {
+    let html = '<div class="card signin"><h2>Committee sign-in</h2>' +
+      '<p class="card-note">This page holds members\' contact details, so it only opens for committee members on the list. Sign in with your Google account.</p>';
+    if (!SERVICE_URL) html += '<div class="banner warn">The membership service address hasn\'t been set yet: fill in <strong>MEMBERS_SERVICE_URL</strong> near the top of index.html.</div>';
+    if (state.error) html += '<div class="banner bad">' + esc(state.error) + "</div>";
+    html += '<div id="gsiButton"></div></div>';
+    return html;
+  }
+
+  function exportBanner(d) {
+    const last = d.lastExportDate;
+    if (!last) return '<div class="banner warn"><strong>No Archery GB export imported yet.</strong> Save the Sport:80 export as <strong>member_list.xlsx</strong> in the Handicaps folder, then press "Check for new export".</div>';
+    const age = daysBetween(last, d.today);
+    if (age > d.staleDays) return '<div class="banner warn"><strong>The latest Archery GB export is ' + age + ' days old</strong> (' + esc(uk(last)) + '). Anyone who has renewed since then will still show as due or expired. ' +
+      'Ask for a fresh export from Sport:80 (Athletes &gt; Smart List &gt; Active Members) saved over member_list.xlsx in the Handicaps folder.</div>';
+    return '<div class="banner info">Latest Archery GB export: <strong>' + esc(uk(last)) + "</strong> (" + esc(inDays(-age).replace("in ", "")) + ").</div>";
+  }
+
+  function viewOverview(d) {
+    const act = d.members.filter(function (m) { return !m.left; });
+    const cleared = act.filter(function (m) { return m.cleared; }).length;
+    const agbDue = act.filter(function (m) { return m.agbState === "due"; }).length;
+    const agbGone = act.filter(function (m) { return m.agbState === "expired" || m.agbState === "lapsed" || m.agbState === "unknown"; }).length;
+    const duesOwed = act.filter(function (m) { return m.duesState === "unpaid" || m.duesState === "overdue"; }).length;
+    const missing = act.filter(function (m) { return m.missing; }).length;
+    let html = exportBanner(d);
+    if (!d.emailsEnabled) html += '<div class="banner info">Emails are switched off: nothing is sent to members or the committee. See the Emails tab for what would go out.</div>';
+    html += '<div class="tile-row">' +
+      tile("Members", act.length, "", "all", act.filter(function (m) { return m.under18; }).length + " under 18") +
+      tile("Cleared to shoot", cleared, cleared === act.length ? "good" : "", "all", "AGB current and dues paid") +
+      tile("Not cleared", act.length - cleared, act.length - cleared ? "bad" : "good", "notcleared", "can't shoot until sorted") +
+      tile("AGB due soon", agbDue, agbDue ? "warn" : "", "agbdue", "in the next " + d.dueSoonDays + " days") +
+      tile("AGB expired or lapsed", agbGone, agbGone ? "bad" : "", "agbgone", "") +
+      tile("Club dues owed", duesOwed, duesOwed ? "bad" : "", "dues", "not recorded or overdue") +
+      "</div>";
+    if (missing) html += '<div class="banner warn">' + missing + " member" + (missing === 1 ? " is" : "s are") + ' in the register but not in the latest export, although their AGB date hasn\'t passed. They may have moved club or cancelled. <button class="btn small" data-filter-go="missing">Show them</button></div>';
+
+    const soon = act.filter(function (m) { return m.agbState === "due"; }).sort(function (a, b) { return a.agbDays - b.agbDays; });
+    html += '<div class="card"><h2>AGB renewals coming up</h2><p class="card-note">Archery GB memberships ending in the next ' + d.dueSoonDays + " days, soonest first. Members with automatic renewal will renew on the day; the next export will show it.</p>";
+    html += soon.length ? table(["Name", "AGB number", "Runs out", ""], soon.map(function (m) {
+      return { agb: m.agb, cells: [esc(name(m)) + (m.under18 ? ' <span class="pill">U18</span>' : ""), esc(m.agb), esc(uk(m.expiry)), agbPill(m)] };
+    })) : '<p class="muted small">None in the next ' + d.dueSoonDays + " days.</p>";
+    html += "</div>";
+
+    const blocked = act.filter(function (m) { return !m.cleared; }).sort(byName);
+    html += '<div class="card"><h2>Not cleared to shoot</h2><p class="card-note">Everyone shooting must hold current Archery GB membership for the club\'s insurance to apply. Click a name to update them.</p>';
+    html += blocked.length ? table(["Name", "Why"], blocked.map(function (m) {
+      return { agb: m.agb, cells: [esc(name(m)), esc(m.reasons.join("; "))] };
+    })) : '<p class="muted small">Everyone is cleared.</p>';
+    html += "</div>";
+    return html;
+  }
+  function tile(label, value, tone, filter, hint) {
+    return '<button class="tile" data-filter-go="' + filter + '"><div class="label">' + esc(label) + '</div><div class="value ' + tone + '">' + value + "</div>" + (hint ? '<div class="hint">' + esc(hint) + "</div>" : "") + "</button>";
+  }
+  function table(head, rows, opts) {
+    opts = opts || {};
+    return '<div class="table-scroll"><table><thead><tr>' + head.map(function (h, i) { return "<th" + (opts.numCols && opts.numCols.indexOf(i) !== -1 ? ' class="num"' : "") + ">" + h + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      rows.map(function (r) { return '<tr class="clickable' + (state.selected === r.agb ? " selected" : "") + '" data-open="' + esc(r.agb) + '">' + r.cells.map(function (c) { return "<td>" + c + "</td>"; }).join("") + "</tr>"; }).join("") +
+      "</tbody></table></div>";
+  }
+
+  function viewMembers(d) {
+    let html = "";
+    const sel = state.selected && d.members.find(function (m) { return m.agb === state.selected; });
+    if (sel) html += viewDetail(sel, d);
+    const f = FILTERS.find(function (x) { return x.key === state.filter; }) || FILTERS[0];
+    const q = state.search.trim().toLowerCase();
+    const list = d.members.filter(f.test).filter(function (m) {
+      return !q || (name(m) + " " + m.agb + " " + m.email).toLowerCase().indexOf(q) !== -1;
+    }).sort(byName);
+    const pickedCount = Object.keys(state.picked).filter(function (k) { return state.picked[k]; }).length;
+
+    html += '<div class="card"><div class="card-head"><div><h2>Members</h2><p class="card-note">Tick members to record club dues for several at once, or click a name to see and change their details.</p></div>' +
+      '<button class="btn no-print" data-act="addToggle">Add a member</button></div>';
+    if (state.adding) html += viewAdd();
+    html += '<div class="toolbar"><input type="search" id="search" placeholder="Search name, AGB number or email" value="' + esc(state.search) + '" aria-label="Search members"></div>';
+    html += '<div class="chips" role="group" aria-label="Filter">' + FILTERS.map(function (x) {
+      const n = d.members.filter(x.test).length;
+      if (!n && x.key !== "all" && x.key !== state.filter) return "";
+      return '<button class="chip" data-filter="' + x.key + '" aria-pressed="' + (x.key === state.filter) + '">' + esc(x.label) + '<span class="n">' + n + "</span></button>";
+    }).join("") + "</div>";
+    if (pickedCount) {
+      html += '<div class="banner info no-print"><div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        "<strong>" + pickedCount + " selected.</strong> Record club dues paid on " +
+        '<input type="date" id="bulkDate" value="' + todayLocal() + '"> <button class="btn primary small" data-act="bulkDues">Record dues</button> <button class="btn small" data-act="clearPicks">Clear selection</button></div></div>';
+    }
+    if (!list.length) html += '<p class="muted small">No members match.</p>';
+    else {
+      const allPicked = list.every(function (m) { return state.picked[m.agb]; });
+      html += '<div class="table-scroll"><table><thead><tr><th class="no-print"><input type="checkbox" id="pickAll" aria-label="Select all shown"' + (allPicked ? " checked" : "") + "></th><th>Name</th><th>AGB number</th><th>AGB runs out</th><th>AGB</th><th>Club dues</th><th>Cleared</th></tr></thead><tbody>" +
+        list.map(function (m) {
+          return '<tr class="clickable' + (state.selected === m.agb ? " selected" : "") + '" data-open="' + esc(m.agb) + '">' +
+            '<td class="no-print"><input type="checkbox" data-pick="' + esc(m.agb) + '" aria-label="Select ' + esc(name(m)) + '"' + (state.picked[m.agb] ? " checked" : "") + "></td>" +
+            "<td>" + esc(name(m)) + (m.under18 ? ' <span class="pill">U18</span>' : "") + (m.missing ? ' <span class="pill warn" title="Not in the latest export">not in export</span>' : "") + "</td>" +
+            '<td class="nowrap">' + esc(m.agb) + "</td>" +
+            '<td class="nowrap">' + esc(uk(m.expiry)) + (m.source === "manual" ? ' <span class="muted small">(entered)</span>' : "") + "</td>" +
+            "<td>" + agbPill(m) + "</td>" +
+            "<td>" + duesPill(m) + (m.duesDue ? '<div class="muted small">due ' + esc(uk(m.duesDue)) + "</div>" : "") + "</td>" +
+            "<td>" + clearedMark(m) + "</td></tr>";
+        }).join("") + "</tbody></table></div>";
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function viewAdd() {
+    return '<div class="card" style="background:var(--page-plane)"><h3 style="margin-top:0">Add a member</h3>' +
+      '<p class="card-note">Normally members arrive from the Archery GB export. Add someone by hand only if they\'re not in it yet (for example they joined AGB through another club). The next export fills in the rest.</p>' +
+      '<div class="form-grid">' +
+      field("AGB number", '<input type="text" id="addAgb" inputmode="numeric" autocomplete="off">') +
+      field("First name", '<input type="text" id="addFirst" autocomplete="off">') +
+      field("Last name", '<input type="text" id="addLast" autocomplete="off">') +
+      field("Email", '<input type="email" id="addEmail" autocomplete="off">') +
+      field("AGB runs out", '<input type="date" id="addExpiry">') +
+      field("Club dues paid on", '<input type="date" id="addDues">') +
+      '</div><button class="btn primary" data-act="addSave">Add member</button> <button class="btn" data-act="addToggle">Cancel</button></div>';
+  }
+  function field(label, input) { return '<div class="field"><label>' + esc(label) + "</label>" + input + "</div>"; }
+
+  function viewDetail(m, d) {
+    let html = '<div class="card" id="detail"><div class="card-head"><div><h2>' + esc(name(m)) + (m.under18 ? ' <span class="pill">U18</span>' : "") + "</h2>" +
+      '<p class="card-note">AGB number ' + esc(m.agb) + (m.email ? ' &middot; <a href="mailto:' + esc(m.email) + '">' + esc(m.email) + "</a>" : "") + (m.phone ? ' &middot; <a href="tel:' + esc(m.phone.replace(/\s+/g, "")) + '">' + esc(m.phone) + "</a>" : "") + "</p></div>" +
+      '<button class="btn small" data-act="closeDetail">Close</button></div>';
+    html += '<div class="banner ' + (m.cleared ? "good" : "bad") + '">' + (m.cleared ? "<strong>Cleared to shoot.</strong>" : "<strong>Not cleared to shoot.</strong><ul class=\"reasons\">" + m.reasons.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>") + "</div>";
+    html += '<div class="facts">' +
+      '<div><span class="k">AGB membership</span>' + agbPill(m) + " " + esc(uk(m.expiry)) + "</div>" +
+      '<div><span class="k">AGB valid from</span>' + esc(uk(m.from) || "not known") + "</div>" +
+      '<div><span class="k">Last in an export</span>' + esc(uk(m.lastInExport) || "never") + "</div>" +
+      '<div><span class="k">Club dues</span>' + duesPill(m) + (m.duesPaid ? " paid " + esc(uk(m.duesPaid)) : "") + "</div>" +
+      (m.reminders ? '<div><span class="k">Reminders sent</span>' + esc(m.reminders) + "</div>" : "") +
+      (m.updatedBy ? '<div><span class="k">Last changed</span>' + esc(m.updatedBy) + "</div>" : "") +
+      "</div>";
+    html += '<div class="form-grid">' +
+      field("Club dues paid on", '<div class="row"><input type="date" id="dDues" value="' + esc(m.duesPaid) + '"><button class="btn small" data-act="duesToday">Today</button></div>') +
+      field("AGB runs out", '<input type="date" id="dExpiry" value="' + esc(m.expiry) + '">') +
+      field("Email", '<input type="email" id="dEmail" value="' + esc(m.email) + '">') +
+      field("Phone", '<input type="text" id="dPhone" value="' + esc(m.phone) + '">') +
+      "</div>" +
+      '<p class="card-note">Only change the AGB date after seeing their e-card or Sport:80 (for example if they renewed after the last export). A later date from the next export always takes over.</p>' +
+      field("Notes", '<textarea id="dNotes" maxlength="500">' + esc(m.notes) + "</textarea>") +
+      '<label class="check" style="margin:10px 0 14px"><input type="checkbox" id="dLeft"' + (m.left ? " checked" : "") + "> Left the club (hides them from lists and reminders)</label>" +
+      '<button class="btn primary" data-act="saveDetail">Save changes</button>';
+    return html + "</div>";
+  }
+
+  function viewRange(d) {
+    const act = d.members.filter(function (m) { return !m.left; }).sort(byName);
+    const yes = act.filter(function (m) { return m.cleared; });
+    const no = act.filter(function (m) { return !m.cleared; });
+    return exportBanner(d) +
+      '<div class="card"><div class="card-head"><div><h2>Cleared to shoot: ' + esc(uk(d.today)) + '</h2><p class="card-note">Current Archery GB membership and club dues paid. If someone says they\'ve renewed, their AGB e-card QR code shows their live status.</p></div>' +
+      '<button class="btn no-print" data-act="print">Print</button></div>' +
+      '<div class="range-cols"><div><h3>Cleared (' + yes.length + ")</h3>" +
+      (yes.length ? "<ol>" + yes.map(function (m) { return "<li>" + esc(name(m)) + ' <span class="muted small">' + esc(m.agb) + "</span></li>"; }).join("") + "</ol>" : '<p class="muted small">Nobody yet.</p>') +
+      "</div><div><h3>Not cleared (" + no.length + ")</h3>" +
+      (no.length ? "<ol>" + no.map(function (m) { return "<li>" + esc(name(m)) + ' <div class="why">' + esc(m.reasons.join("; ")) + "</div></li>"; }).join("") + "</ol>" : '<p class="muted small">Nobody.</p>') +
+      "</div></div></div>";
+  }
+
+  function viewImport(d) {
+    let html = exportBanner(d);
+    html += '<div class="card"><h2>Where the data comes from</h2>' +
+      '<p class="card-note">Every hour the service looks in the Handicaps folder for <strong>member_list.xlsx</strong> (the Archery GB Sport:80 member export) and reads it when it changes. ' +
+      "It only reads the folder and never changes anything in it. The newest export always wins, and an AGB date never moves backwards. " +
+      "Only name, email, phone, under-18, AGB number, status and dates are kept.</p>" +
+      '<button class="btn primary" data-act="checkNow">Check for new export now</button>';
+    if (state.msg && state.msgFor === "import") html += '<p class="msg ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</p>";
+    html += "</div>";
+    html += '<div class="card"><h2>Upload an export instead</h2><p class="card-note">If the folder copy isn\'t available, choose the Sport:80 export file here (.xlsx or .csv). It\'s read in your browser and only the fields above are sent.</p>' +
+      '<input type="file" id="uploadFile" accept=".xlsx,.csv">';
+    if (state.uploadMsg) html += '<p class="msg ' + (state.uploadMsg.bad ? "bad" : "good") + '">' + esc(state.uploadMsg.text) + "</p>";
+    html += "</div>";
+    html += '<div class="card"><h2>Import history</h2>' + (d.imports.length ? '<div class="table-scroll"><table><thead><tr><th>Imported</th><th>File</th><th>Export date</th><th class="num">Rows</th><th class="num">New</th><th>By</th></tr></thead><tbody>' +
+      d.imports.map(function (i) { return '<tr><td class="nowrap">' + esc(i.when) + "</td><td>" + esc(i.file) + '</td><td class="nowrap">' + esc(uk(i.exportDate)) + '</td><td class="num">' + esc(i.rows) + '</td><td class="num">' + esc(i.added) + "</td><td>" + esc(i.by) + "</td></tr>"; }).join("") +
+      "</tbody></table></div>" : '<p class="muted small">Nothing imported yet.</p>') + "</div>";
+    return html;
+  }
+
+  function viewEmails(d) {
+    const s = d.settings;
+    let html = d.emailsEnabled
+      ? '<div class="banner good"><strong>Emails are switched on in the service.</strong> Each type below also has its own switch.</div>'
+      : '<div class="banner warn"><strong>Emails are switched off.</strong> The service can\'t send anything to anyone until EMAILS_ENABLED is changed to true in the script. The switches below are remembered for when that happens.</div>';
+    html += '<div class="card"><h2>Settings</h2>' +
+      '<label class="check"><input type="checkbox" data-setting="memberReminders"' + (s.memberReminders === "on" ? " checked" : "") + "> Remind members " + d.reminderDays.join(" and ") + " days before their AGB membership runs out</label>" +
+      '<p class="card-note" style="margin-left:26px">Sent at about 7am. One email per address, so a family sharing an email gets one message.</p>' +
+      '<label class="check"><input type="checkbox" data-setting="committeeSummary"' + (s.committeeSummary === "on" ? " checked" : "") + "> Send the committee a summary every Monday</label>" +
+      '<div class="form-grid">' +
+      field("Committee summary goes to", '<input type="text" id="setCommittee" value="' + esc(s.committeeEmails) + '">') +
+      field("Replies go to (optional)", '<input type="email" id="setReplyTo" value="' + esc(s.replyTo) + '" placeholder="e.g. membership@...">') +
+      '</div><button class="btn" data-act="saveEmails">Save addresses</button> <button class="btn" data-act="sendTest"' + (d.emailsEnabled ? "" : " disabled") + ">Send me a test summary</button>";
+    if (state.msg && state.msgFor === "emails") html += '<p class="msg ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</p>";
+    html += "</div>";
+    const due = d.preview.dueToday || [];
+    html += '<div class="card"><h2>Reminders due today</h2><p class="card-note">' + (d.emailsEnabled && s.memberReminders === "on" ? "These go out at the next 7am run." : "These would go out if reminders were switched on.") + "</p>" +
+      (due.length ? '<div class="table-scroll"><table><thead><tr><th>To</th><th>For</th><th>Reminder</th></tr></thead><tbody>' + due.map(function (g) {
+        return "<tr><td>" + esc(g.email) + "</td><td>" + esc(g.names.join(", ")) + "</td><td>" + esc(g.kind.map(function (k) { return k + "-day"; }).filter(function (k, i, a) { return a.indexOf(k) === i; }).join(", ")) + "</td></tr>";
+      }).join("") + "</tbody></table></div>" : '<p class="muted small">None due today.</p>') + "</div>";
+    if (d.preview.reminder) html += '<div class="card"><h2>What a reminder looks like</h2><p class="card-note">To ' + esc(d.preview.reminder.to) + "</p><pre class=\"email\"><strong>" + esc(d.preview.reminder.subject) + "</strong>\n\n" + esc(d.preview.reminder.body) + "</pre></div>";
+    html += '<div class="card"><h2>What the committee summary looks like</h2><pre class="email"><strong>' + esc(d.preview.summary.subject) + "</strong>\n\n" + esc(d.preview.summary.body) + "</pre></div>";
+    html += '<div class="card"><h2>Sent emails</h2>' + (d.emails.length ? '<div class="table-scroll"><table><thead><tr><th>When</th><th>To</th><th>Kind</th><th>For</th><th>Result</th></tr></thead><tbody>' +
+      d.emails.map(function (e) { return '<tr><td class="nowrap">' + esc(e.when) + "</td><td>" + esc(e.to) + "</td><td>" + esc(e.kind) + "</td><td>" + esc(e.member) + "</td><td>" + esc(e.result) + "</td></tr>"; }).join("") +
+      "</tbody></table></div>" : '<p class="muted small">No emails have been sent.</p>') + "</div>";
+    return html;
+  }
+
+  // ---------------------------------------------------------------- render
+  function render() {
+    document.getElementById("busy").hidden = !state.busy;
+    const tabsEl = document.getElementById("tabs");
+    const head = document.getElementById("headControls");
+    const status = document.getElementById("statusLine");
+    const main = document.getElementById("main");
+    const d = state.data;
+    if (!d) {
+      tabsEl.hidden = true;
+      head.innerHTML = "";
+      status.textContent = state.busy ? "Loading the register..." : "";
+      main.innerHTML = state.busy && state.token ? '<div class="card"><p class="muted">Loading the register...</p></div>' : viewSignIn();
+      if (!state.token) drawSignIn();
+      return;
+    }
+    tabsEl.hidden = false;
+    const notCleared = d.members.filter(function (m) { return !m.left && !m.cleared; }).length;
+    tabsEl.innerHTML = TABS.map(function (t) {
+      const count = t.key === "members" ? d.members.filter(function (m) { return !m.left; }).length : t.key === "range" && notCleared ? notCleared + " not" : "";
+      return '<button role="tab" data-tab="' + t.key + '" aria-selected="' + (t.key === state.tab) + '">' + esc(t.label) + (count !== "" ? '<span class="count">' + esc(count) + "</span>" : "") + "</button>";
+    }).join("");
+    head.innerHTML = '<span class="muted small">' + esc(state.email || "") + '</span> <button class="btn" data-act="refresh">Refresh</button> <button class="btn" data-act="signout">Sign out</button>';
+    status.textContent = "Today " + uk(d.today) + (d.lastExportDate ? " · export of " + uk(d.lastExportDate) : "");
+    const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails }[state.tab];
+    let html = "";
+    if (state.msg && !state.msgFor) html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
+    main.innerHTML = html + view(d);
+    const s = document.getElementById("search");
+    if (s && state.focusSearch) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); state.focusSearch = false; }
+  }
+
+  function setTab(t) {
+    state.tab = t; state.msg = null; state.msgFor = null;
+    history.replaceState(null, "", "#" + t);
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  // ---------------------------------------------------------------- events
+  document.addEventListener("click", function (ev) {
+    const t = ev.target;
+    const tab = t.closest("[data-tab]");
+    if (tab) { setTab(tab.dataset.tab); return; }
+    const go = t.closest("[data-filter-go]");
+    if (go) { state.filter = go.dataset.filterGo; state.search = ""; state.selected = null; setTab("members"); return; }
+    const chip = t.closest("[data-filter]");
+    if (chip) { state.filter = chip.dataset.filter; render(); return; }
+    if (t.matches("[data-pick]")) { state.picked[t.dataset.pick] = t.checked; render(); return; }
+    if (t.id === "pickAll") {
+      const f = FILTERS.find(function (x) { return x.key === state.filter; }) || FILTERS[0];
+      const q = state.search.trim().toLowerCase();
+      state.data.members.filter(f.test).filter(function (m) { return !q || (name(m) + " " + m.agb + " " + m.email).toLowerCase().indexOf(q) !== -1; })
+        .forEach(function (m) { state.picked[m.agb] = t.checked; });
+      render(); return;
+    }
+    const open = t.closest("[data-open]");
+    if (open && !t.closest("input, a, button")) {
+      state.selected = open.dataset.open; state.msg = null;
+      if (state.tab !== "members") { state.filter = "all"; setTab("members"); } else render();
+      const el = document.getElementById("detail");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const setting = t.closest("[data-setting]");
+    if (setting) { state.msgFor = "emails"; call({ action: "setSetting", key: setting.dataset.setting, value: setting.checked ? "on" : "off" }, "Saved."); return; }
+    const b = t.closest("[data-act]");
+    if (!b || b.disabled) return;
+    const act = b.dataset.act;
+    if (act === "signout") signOut("");
+    else if (act === "refresh") { state.msgFor = null; call({ action: "list" }); }
+    else if (act === "print") window.print();
+    else if (act === "closeDetail") { state.selected = null; render(); }
+    else if (act === "duesToday") { const i = document.getElementById("dDues"); if (i) i.value = todayLocal(); }
+    else if (act === "saveDetail") {
+      const agb = state.selected;
+      state.msgFor = null;
+      call({ action: "update", agb: agb, fields: {
+        duesPaid: document.getElementById("dDues").value,
+        expiry: document.getElementById("dExpiry").value,
+        email: document.getElementById("dEmail").value,
+        phone: document.getElementById("dPhone").value,
+        notes: document.getElementById("dNotes").value,
+        left: document.getElementById("dLeft").checked
+      } }, "Saved.");
+    }
+    else if (act === "bulkDues") {
+      const agbs = Object.keys(state.picked).filter(function (k) { return state.picked[k]; });
+      const date = document.getElementById("bulkDate").value;
+      state.msgFor = null;
+      call({ action: "duesMany", agbs: agbs, date: date }, "Club dues recorded for " + agbs.length + " member" + (agbs.length === 1 ? "" : "s") + ".").then(function (res) { if (res) { state.picked = {}; render(); } });
+    }
+    else if (act === "clearPicks") { state.picked = {}; render(); }
+    else if (act === "addToggle") { state.adding = !state.adding; render(); }
+    else if (act === "addSave") {
+      state.msgFor = null;
+      call({ action: "add", fields: {
+        agb: document.getElementById("addAgb").value, first: document.getElementById("addFirst").value,
+        last: document.getElementById("addLast").value, email: document.getElementById("addEmail").value,
+        expiry: document.getElementById("addExpiry").value, duesPaid: document.getElementById("addDues").value
+      } }, "Member added.").then(function (res) { if (res) { state.adding = false; render(); } });
+    }
+    else if (act === "checkNow") {
+      state.msgFor = "import";
+      call({ action: "checkNow" }, function (res) {
+        const r = res.result || {};
+        return r.imported ? "Imported " + r.rows + " members from " + r.fileName + " (export of " + uk(r.exportDate) + "): " + r.added + " new." : (r.message || "Nothing new.");
+      });
+    }
+    else if (act === "saveEmails") {
+      state.msgFor = "emails";
+      const c = document.getElementById("setCommittee").value, r = document.getElementById("setReplyTo").value;
+      call({ action: "setSetting", key: "committeeEmails", value: c }).then(function (res) { if (res) call({ action: "setSetting", key: "replyTo", value: r }, "Saved."); });
+    }
+    else if (act === "sendTest") { state.msgFor = "emails"; call({ action: "sendTest" }, "Test summary sent to " + state.email + "."); }
+  });
+  document.addEventListener("input", function (ev) {
+    if (ev.target.id === "search") { state.search = ev.target.value; state.focusSearch = true; render(); }
+  });
+  document.addEventListener("change", function (ev) {
+    if (ev.target.id === "uploadFile" && ev.target.files && ev.target.files[0]) uploadFile(ev.target.files[0]);
+  });
+
+  // ---------------------------------------------------------------- upload
+  // Copied from members-service.gs by build.py: keep them identical.
+  function normHead_(s) { return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+  const FIELDS = {
+    agb: function (h) { return /\bmemb(ership)? (no|number)\b/.test(h) || /^agb (no|number)/.test(h); },
+    expiry: function (h) { return /\bexp(iry)? date\b|\bexpires?\b|\bexpiry\b/.test(h); },
+    from: function (h) { return /\bvalid from\b|\bstart date\b/.test(h); },
+    status: function (h) { return /\bmembership status\b|^status$/.test(h); },
+    first: function (h) { return /^first name|^forename/.test(h); },
+    last: function (h) { return /^last name|^surname/.test(h); },
+    email: function (h) { return /^e ?mail/.test(h); },
+    phone: function (h) { return /contact number|phone|mobile/.test(h); },
+    age: function (h) { return h === "age"; },
+    dob: function (h) { return /date of birth|^dob$/.test(h); }
+  };
+  function mapColumns_(header) {
+    const map = {};
+    header.forEach(function (raw, i) {
+      const h = normHead_(raw);
+      Object.keys(FIELDS).forEach(function (k) { if (map[k] === undefined && FIELDS[k](h)) map[k] = i; });
+    });
+    return map;
+  }
+  function looksLikeExport_(header) {
+    const m = mapColumns_(header || []);
+    return m.agb !== undefined && m.expiry !== undefined && (m.first !== undefined || m.last !== undefined);
+  }
+  function xmlText_(s) {
+    return String(s).replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, function (all, e) {
+      if (e[0] === "#") return String.fromCharCode(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
+      return { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }[e.toLowerCase()];
+    });
+  }
+  function attrs_(tag) {
+    const out = {};
+    String(tag).replace(/([\w:]+)="([^"]*)"/g, function (all, k, v) { out[k] = xmlText_(v); return all; });
+    return out;
+  }
+  function colIndex_(ref) {
+    const letters = String(ref).replace(/[^A-Z]/g, "");
+    let n = 0;
+    for (let i = 0; i < letters.length; i++) n = n * 26 + (letters.charCodeAt(i) - 64);
+    return n - 1;
+  }
+  function parseXlsxParts_(files) {
+    const shared = [];
+    const sst = files["xl/sharedStrings.xml"] || "";
+    sst.replace(/<si>([\s\S]*?)<\/si>/g, function (all, si) {
+      let t = "";
+      si.replace(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g, function (a, x) { t += xmlText_(x); return a; });
+      shared.push(t);
+      return all;
+    });
+    let sheetPath = "xl/worksheets/sheet1.xml";
+    const wb = files["xl/workbook.xml"] || "";
+    const first = wb.match(/<sheet\s[^>]*>/);
+    if (first) {
+      const rid = attrs_(first[0])["r:id"];
+      const rels = files["xl/_rels/workbook.xml.rels"] || "";
+      (rels.match(/<Relationship\s[^>]*>/g) || []).forEach(function (tag) {
+        const a = attrs_(tag);
+        if (a.Id === rid && a.Target) sheetPath = a.Target.charAt(0) === "/" ? a.Target.slice(1) : "xl/" + a.Target.replace(/^\.\//, "");
+      });
+    }
+    const xml = files[sheetPath];
+    if (!xml) throw new Error("Couldn't find the first worksheet in the file.");
+    const table = [];
+    xml.replace(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g, function (all, rowAttrs, body) {
+      const ra = attrs_(rowAttrs);
+      const ri = ra.r ? +ra.r - 1 : table.length;
+      const row = [];
+      String(body || "").replace(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, function (a, cAttrs, inner) {
+        const ca = attrs_(cAttrs);
+        const ci = ca.r ? colIndex_(ca.r) : row.length;
+        inner = inner || "";
+        let v = "";
+        const vm = inner.match(/<v>([\s\S]*?)<\/v>/);
+        if (ca.t === "s") v = vm ? (shared[+vm[1]] || "") : "";
+        else if (ca.t === "inlineStr") { v = ""; inner.replace(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g, function (q, x) { v += xmlText_(x); return q; }); }
+        else if (ca.t === "str" || ca.t === "e") v = vm ? xmlText_(vm[1]) : "";
+        else if (ca.t === "b") v = vm ? vm[1] === "1" : "";
+        else v = vm ? Number(vm[1]) : "";
+        row[ci] = v;
+        return a;
+      });
+      for (let i = 0; i < row.length; i++) if (row[i] === undefined) row[i] = "";
+      table[ri] = row;
+      return all;
+    });
+    return table.filter(function (r) { return r && r.some(function (v) { return v !== "" && v !== null; }); });
+  }
+
+  function readUpload(file) {
+    if (/\.csv$/i.test(file.name)) {
+      return file.text().then(function (text) {
+        return text.replace(/\r/g, "").split("\n").filter(function (l) { return l.trim(); }).map(function (line) {
+          const out = []; let cur = "", q = false;
+          for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (q) { if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; }
+            else if (ch === '"') q = true; else if (ch === ",") { out.push(cur); cur = ""; } else cur += ch;
+          }
+          out.push(cur);
+          return out;
+        });
+      });
+    }
+    if (!window.JSZip) return Promise.reject(new Error("The file reader hasn't loaded. Check your connection and try again."));
+    return file.arrayBuffer().then(function (buf) { return JSZip.loadAsync(buf); }).then(function (zip) {
+      const names = Object.keys(zip.files).filter(function (n) { return /^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|worksheets\/[^\/]+\.xml)$/.test(n); });
+      return Promise.all(names.map(function (n) { return zip.file(n).async("string"); })).then(function (texts) {
+        const files = {};
+        names.forEach(function (n, i) { files[n] = texts[i]; });
+        return parseXlsxParts_(files);
+      });
+    });
+  }
+  function uploadFile(file) {
+    state.uploadMsg = { bad: false, text: "Reading " + file.name + "..." };
+    render();
+    readUpload(file).then(function (table) {
+      if (!table.length || !looksLikeExport_(table[0])) throw new Error("This doesn't look like an Archery GB member export: it needs membership number and expiry date columns.");
+      // Only send the columns the register keeps.
+      const map = mapColumns_(table[0]);
+      const keep = ["agb", "expiry", "from", "status", "first", "last", "email", "phone", "age"];
+      if (map.age === undefined) keep.push("dob");
+      const cols = keep.filter(function (k) { return map[k] !== undefined; }).map(function (k) { return map[k]; });
+      const small = table.map(function (r) { return cols.map(function (c) { return r[c] === undefined ? "" : r[c]; }); });
+      const m = file.name.match(/(20\d\d)-(\d\d)-(\d\d)/);
+      const lm = new Date(file.lastModified);
+      const exportDate = m ? m[1] + "-" + m[2] + "-" + m[3] : lm.getFullYear() + "-" + String(lm.getMonth() + 1).padStart(2, "0") + "-" + String(lm.getDate()).padStart(2, "0");
+      state.uploadMsg = { bad: false, text: "Sending " + (small.length - 1) + " rows..." };
+      render();
+      return api({ action: "upload", fileName: file.name, exportDate: exportDate, table: small });
+    }).then(function (res) {
+      if (!res) return;
+      if (!res.ok) {
+        if (res.error === "not-admin") { signOut("Your sign-in has expired. Please sign in again."); return; }
+        throw new Error(res.error || "The upload failed.");
+      }
+      state.data = res;
+      const r = res.result;
+      state.uploadMsg = { bad: false, text: "Imported " + r.rows + " members (export of " + uk(r.exportDate) + "): " + r.added + " new, " + r.updated + " updated." };
+      render();
+    }).catch(function (err) {
+      state.uploadMsg = { bad: true, text: err.message || String(err) };
+      render();
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
