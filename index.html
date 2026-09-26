@@ -510,7 +510,28 @@
       field("Notes", '<textarea id="dNotes" maxlength="500">' + esc(m.notes) + "</textarea>") +
       '<label class="check" style="margin:10px 0 14px"><input type="checkbox" id="dLeft"' + (m.left ? " checked" : "") + "> Left the club (hides them from lists and reminders)</label>" +
       '<button class="btn primary" data-act="saveDetail">Save changes</button>';
+    html += viewReminder(m, d);
     return html + "</div>";
+  }
+
+  function viewReminder(m, d) {
+    const sent = (d.emails || []).filter(function (e) { return m.email && e.to === m.email && e.result === "sent"; })[0];
+    const canSend = d.emailsEnabled && m.email && m.expiry && !m.left;
+    let html = '<h3 style="margin-top:22px">Reminder email</h3>' +
+      '<p class="card-note">Send ' + esc(m.first || "them") + " their Archery GB reminder now, whatever the date. Preview it first, or send a test copy to yourself (" + esc(state.email || "") + ").</p>";
+    if (!m.expiry) html += '<p class="msg bad">There\'s no AGB expiry date for this member yet, so there\'s nothing to remind them about.</p>';
+    html += '<div class="toolbar">' +
+      '<button class="btn" data-act="previewReminder"' + (m.expiry ? "" : " disabled") + ">Preview</button>" +
+      '<button class="btn" data-act="testReminder"' + (m.expiry && d.testEmailsEnabled ? "" : " disabled") + ">Send me a test</button>" +
+      '<button class="btn primary" data-act="sendReminder"' + (canSend ? "" : " disabled") + ">Send to " + esc(m.email || "member") + "</button></div>";
+    if (!d.emailsEnabled) html += '<p class="card-note">Sending to members is switched off (EMAILS_ENABLED = false in the script). Preview and test copies to yourself still work.</p>';
+    else if (!m.email) html += '<p class="card-note">Add an email address above to send them a reminder.</p>';
+    else if (m.left) html += '<p class="card-note">They\'re marked as having left the club.</p>';
+    if (sent) html += '<p class="card-note">Last emailed ' + esc(sent.when) + " (" + esc(sent.kind) + ").</p>";
+    if (state.msg && state.msgFor === "reminder") html += '<p class="msg ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</p>";
+    const p = state.reminderPreview;
+    if (p && p.agb === m.agb) html += '<p class="card-note" style="margin-bottom:0">To ' + esc(p.to || "(no email address)") + '</p><pre class="email"><strong>' + esc(p.subject) + "</strong>\n\n" + esc(p.body) + "</pre>";
+    return html;
   }
 
   function viewRange(d) {
@@ -558,7 +579,9 @@
       '<div class="form-grid">' +
       field("Committee summary goes to", '<input type="text" id="setCommittee" value="' + esc(s.committeeEmails) + '">') +
       field("Replies go to (optional)", '<input type="email" id="setReplyTo" value="' + esc(s.replyTo) + '" placeholder="e.g. membership@...">') +
-      '</div><button class="btn" data-act="saveEmails">Save addresses</button> <button class="btn" data-act="sendTest"' + (d.emailsEnabled ? "" : " disabled") + ">Send me a test summary</button>";
+      '</div><button class="btn" data-act="saveEmails">Save addresses</button> <button class="btn" data-act="sendTest"' + (d.testEmailsEnabled ? "" : " disabled") + ">Send me a test summary</button>" +
+      (d.preview.reminder && d.preview.reminder.agb ? ' <button class="btn" data-act="testReminder" data-agb="' + esc(d.preview.reminder.agb) + '"' + (d.testEmailsEnabled ? "" : " disabled") + ">Send me a test reminder</button>" : "") +
+      '<p class="card-note" style="margin-top:8px">Test copies only ever go to you (' + esc(state.email || "") + '), never to members. To send a real reminder to one archer, open them on the Members tab.</p>';
     if (state.msg && state.msgFor === "emails") html += '<p class="msg ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</p>";
     html += "</div>";
     const due = d.preview.dueToday || [];
@@ -632,7 +655,7 @@
     }
     const open = t.closest("[data-open]");
     if (open && !t.closest("input, a, button")) {
-      state.selected = open.dataset.open; state.msg = null;
+      state.selected = open.dataset.open; state.msg = null; state.msgFor = null; state.reminderPreview = null;
       if (state.tab !== "members") { state.filter = "all"; setTab("members"); } else render();
       const el = document.getElementById("detail");
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -689,6 +712,28 @@
       call({ action: "setSetting", key: "committeeEmails", value: c }).then(function (res) { if (res) call({ action: "setSetting", key: "replyTo", value: r }, "Saved."); });
     }
     else if (act === "sendTest") { state.msgFor = "emails"; call({ action: "sendTest" }, "Test summary sent to " + state.email + "."); }
+    else if (act === "previewReminder") {
+      const agb = state.selected;
+      state.msgFor = "reminder"; state.msg = null; state.busy = true; render();
+      api({ action: "previewReminder", agb: agb }).then(function (res) {
+        state.busy = false;
+        if (res && res.ok) state.reminderPreview = Object.assign({ agb: agb }, res.preview);
+        else if (res && res.error === "not-admin") { signOut("Your sign-in has expired. Please sign in again."); return; }
+        else state.msg = { bad: true, text: (res && res.error) || "Couldn't build the preview." };
+        render();
+      }).catch(function () { state.busy = false; state.msg = { bad: true, text: "Couldn't reach the membership service." }; render(); });
+    }
+    else if (act === "testReminder") {
+      const agb = b.dataset.agb || state.selected;
+      state.msgFor = state.tab === "emails" ? "emails" : "reminder";
+      call({ action: "testReminder", agb: agb }, function (res) { return "Test reminder for " + res.result.member + " sent to " + res.result.sentTo + "."; });
+    }
+    else if (act === "sendReminder") {
+      const m = state.data.members.find(function (x) { return x.agb === state.selected; });
+      if (!m || !window.confirm("Email the Archery GB reminder to " + name(m) + " (" + m.email + ") now?")) return;
+      state.msgFor = "reminder";
+      call({ action: "sendReminder", agb: m.agb }, function (res) { return "Reminder sent to " + res.result.member + " (" + res.result.sentTo + ")."; });
+    }
   });
   document.addEventListener("input", function (ev) {
     if (ev.target.id === "search") { state.search = ev.target.value; state.focusSearch = true; render(); }
