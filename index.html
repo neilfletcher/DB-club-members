@@ -451,8 +451,9 @@
     }).join("") + "</div>";
     if (pickedCount) {
       html += '<div class="banner info no-print"><div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-        "<strong>" + pickedCount + " selected.</strong> Record club dues paid on " +
-        '<input type="date" id="bulkDate" value="' + todayLocal() + '"> <button class="btn primary small" data-act="bulkDues">Record dues</button> <button class="btn small" data-act="clearPicks">Clear selection</button></div></div>';
+        "<strong>" + pickedCount + " selected.</strong> Record a club dues payment made on " +
+        '<input type="date" id="bulkDate" value="' + todayLocal() + '"> <button class="btn primary small" data-act="bulkDues">Record dues</button> <button class="btn small" data-act="clearPicks">Clear selection</button></div>' +
+        '<div class="small" style="margin-top:6px">Each member\'s renewal date moves on a year from their current one, so early payers keep their usual renewal date.</div></div>';
     }
     if (!list.length) html += '<p class="muted small">No members match.</p>';
     else {
@@ -496,22 +497,33 @@
       '<div><span class="k">AGB membership</span>' + agbPill(m) + " " + esc(uk(m.expiry)) + "</div>" +
       '<div><span class="k">AGB valid from</span>' + esc(uk(m.from) || "not known") + "</div>" +
       '<div><span class="k">Last in an export</span>' + esc(uk(m.lastInExport) || "never") + "</div>" +
-      '<div><span class="k">Club dues</span>' + duesPill(m) + (m.duesPaid ? " paid " + esc(uk(m.duesPaid)) : "") + "</div>" +
+      '<div><span class="k">Club dues</span>' + duesPill(m) + (m.duesDue ? " paid until " + esc(uk(m.duesDue)) : "") + "</div>" +
+      (m.duesPaid ? '<div><span class="k">Last dues payment</span>' + esc(uk(m.duesPaid)) + "</div>" : "") +
       (m.reminders ? '<div><span class="k">Reminders sent</span>' + esc(m.reminders) + "</div>" : "") +
       (m.updatedBy ? '<div><span class="k">Last changed</span>' + esc(m.updatedBy) + "</div>" : "") +
       "</div>";
+    html += '<div class="banner info no-print" style="margin-top:4px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+      "<strong>Record a club dues payment</strong> paid on " +
+      '<input type="date" id="dPayment" value="' + todayLocal() + '"> <button class="btn primary small" data-act="recordPayment">Record payment</button></div>' +
+      '<div class="small" style="margin-top:6px">' + esc(duesRule(m)) + "</div></div>";
     html += '<div class="form-grid">' +
-      field("Club dues paid on", '<div class="row"><input type="date" id="dDues" value="' + esc(m.duesPaid) + '"><button class="btn small" data-act="duesToday">Today</button></div>') +
+      field("Club dues paid until", '<input type="date" id="dDuesUntil" value="' + esc(m.duesDue) + '">') +
       field("AGB runs out", '<input type="date" id="dExpiry" value="' + esc(m.expiry) + '">') +
       field("Email", '<input type="email" id="dEmail" value="' + esc(m.email) + '">') +
       field("Phone", '<input type="text" id="dPhone" value="' + esc(m.phone) + '">') +
       "</div>" +
-      '<p class="card-note">Only change the AGB date after seeing their e-card or Sport:80 (for example if they renewed after the last export). A later date from the next export always takes over.</p>' +
+      '<p class="card-note">Use "Record payment" when someone pays; only change "paid until" by hand to correct a mistake. Only change the AGB date after seeing their e-card or Sport:80 (for example if they renewed after the last export). A later date from the next export always takes over.</p>' +
       field("Notes", '<textarea id="dNotes" maxlength="500">' + esc(m.notes) + "</textarea>") +
       '<label class="check" style="margin:10px 0 14px"><input type="checkbox" id="dLeft"' + (m.left ? " checked" : "") + "> Left the club (hides them from lists and reminders)</label>" +
       '<button class="btn primary" data-act="saveDetail">Save changes</button>';
     html += viewReminder(m, d);
     return html + "</div>";
+  }
+
+  function addYear(iso) { const a = iso.split("-"); const t = new Date(Date.UTC(+a[0] + 1, a[1] - 1, +a[2])); if (t.getUTCDate() !== +a[2]) t.setUTCDate(0); return t.toISOString().slice(0, 10); }
+  function duesRule(m) {
+    if (!m.duesDue) return "This is their first recorded payment, so dues will run for a year from the payment date.";
+    return "Their dues currently run until " + uk(m.duesDue) + ". A payment made before then (or up to " + state.data.duesRejoinDays + " days after) moves that to " + uk(addYear(m.duesDue)) + ", so paying early doesn't change their renewal date.";
   }
 
   function viewReminder(m, d) {
@@ -670,12 +682,17 @@
     else if (act === "refresh") { state.msgFor = null; call({ action: "list" }); }
     else if (act === "print") window.print();
     else if (act === "closeDetail") { state.selected = null; render(); }
-    else if (act === "duesToday") { const i = document.getElementById("dDues"); if (i) i.value = todayLocal(); }
+    else if (act === "recordPayment") {
+      const date = document.getElementById("dPayment").value;
+      if (!date) return;
+      state.msgFor = null;
+      call({ action: "update", agb: state.selected, fields: { payment: date } }, "Club dues payment recorded.");
+    }
     else if (act === "saveDetail") {
       const agb = state.selected;
       state.msgFor = null;
       call({ action: "update", agb: agb, fields: {
-        duesPaid: document.getElementById("dDues").value,
+        duesUntil: document.getElementById("dDuesUntil").value,
         expiry: document.getElementById("dExpiry").value,
         email: document.getElementById("dEmail").value,
         phone: document.getElementById("dPhone").value,
