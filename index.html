@@ -206,6 +206,8 @@
   .range-cols ol { margin: 0; padding-left: 22px; font-size: 0.92rem; line-height: 1.8; }
   .range-cols .why { color: var(--text-muted); font-size: 0.76rem; }
   @media (max-width: 800px) { .range-cols { grid-template-columns: 1fr; } }
+  /* 16px stops iPhones zooming in when a box is tapped */
+  @media (max-width: 640px) { input[type="search"], input[type="text"], input[type="email"], input[type="date"], textarea, select { font-size: 16px; } }
   @media print { .range-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
   .signin { max-width: 520px; margin: 40px auto; text-align: left; }
@@ -238,7 +240,7 @@
   <nav class="tabs" id="tabs" role="tablist" hidden></nav>
   <main id="main"></main>
   <footer class="foot">
-    Member details come from the Archery GB (Sport:80) export and are kept in the committee's private register. Nothing is stored in this browser.
+    Member details come from the Archery GB (Sport:80) export and are kept in the committee's private register. No member details are stored in this browser, only your sign-in.
     Addresses, dates of birth and membership types are never kept.
   </footer>
 </div>
@@ -310,7 +312,7 @@
     attempt = attempt || 1;
     const ctrl = window.AbortController ? new AbortController() : null;
     const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 60000) : null;
-    return fetch(SERVICE_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ token: state.token }, body)), signal: ctrl ? ctrl.signal : undefined })
+    return fetch(SERVICE_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign(state.session ? { session: state.session } : { token: state.token }, body)), signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) { return r.text(); })
       .then(function (text) {
         clearTimeout(timer);
@@ -358,8 +360,11 @@
       const s = document.createElement("script");
       s.src = "https://accounts.google.com/gsi/client";
       s.async = true;
-      s.onload = function () { resolve(); };
-      s.onerror = function () { gisPromise = null; reject(new Error("Google sign-in couldn't load.")); };
+      s.onload = function () {
+        if (window.google && google.accounts && google.accounts.id) resolve();
+        else { gisPromise = null; reject(new Error("Google sign-in couldn't load here. You can use an emailed code instead.")); }
+      };
+      s.onerror = function () { gisPromise = null; reject(new Error("Google sign-in couldn't load here. You can use an emailed code instead.")); };
       document.head.appendChild(s);
     });
     return gisPromise;
@@ -369,14 +374,33 @@
   function tokenExpiry(t) {
     try { return JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp * 1000; } catch (e) { return 0; }
   }
+  // A code sign-in is kept for this tab, or on this device for 7 days if
+  // "keep me signed in" was ticked.
   function saveToken(t) { try { if (t) sessionStorage.setItem("dbmToken", t); else sessionStorage.removeItem("dbmToken"); } catch (e) {} }
-  function savedToken() {
-    try { const t = sessionStorage.getItem("dbmToken"); return t && tokenExpiry(t) > Date.now() + 120000 ? t : null; } catch (e) { return null; }
+  function saveSession(s, expires, keep) {
+    try {
+      sessionStorage.removeItem("dbmSession"); localStorage.removeItem("dbmSession");
+      if (s) (keep ? localStorage : sessionStorage).setItem("dbmSession", JSON.stringify({ s: s, exp: expires }));
+    } catch (e) {}
+  }
+  function savedAuth() {
+    try {
+      const raw = sessionStorage.getItem("dbmSession") || localStorage.getItem("dbmSession");
+      if (raw) { const x = JSON.parse(raw); if (x.exp > Date.now() + 60000) return { session: x.s }; }
+      const t = sessionStorage.getItem("dbmToken");
+      if (t && tokenExpiry(t) > Date.now() + 120000) return { token: t };
+    } catch (e) {}
+    return null;
   }
   function onCredential(resp) {
     state.token = resp.credential;
+    state.session = null;
     state.error = "";
     saveToken(resp.credential);
+    call({ action: "list" });
+  }
+  function startSession(session) {
+    state.session = session; state.token = null; state.error = ""; state.code = null;
     call({ action: "list" });
   }
   function drawSignIn() {
@@ -391,13 +415,16 @@
       }
       const dark = matchMedia("(prefers-color-scheme: dark)").matches;
       google.accounts.id.renderButton(el, { theme: dark ? "filled_black" : "outline", size: "large", text: "signin_with" });
-    }).catch(function (err) { el.innerHTML = '<p class="msg bad">' + esc(err.message) + "</p>"; });
+    }).catch(function (err) { el.innerHTML = '<p class="muted small">' + esc(err.message) + "</p>"; });
   }
   let gisReady = false, signedOut = false;
   function signOut(why) {
     if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
     saveToken(null);
+    if (state.session) api({ action: "signOut" }).catch(function () {});
+    saveSession(null);
     signedOut = true;
+    state.session = null;
     state.token = null; state.data = null; state.email = null; state.selected = null; state.picked = {};
     state.error = why || "";
     render();
@@ -407,10 +434,25 @@
   // ---------------------------------------------------------------- views
   function viewSignIn() {
     let html = '<div class="card signin"><h2>Committee sign-in</h2>' +
-      '<p class="card-note">This page holds members\' contact details, so it only opens for committee members on the list. Sign in with your Google account.</p>';
+      '<p class="card-note">This page holds members\' contact details, so it only opens for committee members on the list. Sign in with your Google account, or get a code by email below.</p>';
     if (!SERVICE_URL) html += '<div class="banner warn">The membership service address hasn\'t been set yet: fill in <strong>MEMBERS_SERVICE_URL</strong> near the top of index.html.</div>';
     if (state.error) html += '<div class="banner bad">' + esc(state.error) + "</div>";
-    html += '<div id="gsiButton"></div></div>';
+    html += '<div id="gsiButton"></div>';
+    const c = state.code || {};
+    html += '<h3 style="margin-top:22px">No Google account?</h3>';
+    if (!c.sent) {
+      html += '<p class="card-note">Enter your email address and we\'ll email you a 6-digit sign-in code. It only works for committee members on the list.</p>' +
+        '<div class="toolbar"><input type="email" id="codeEmail" autocomplete="email" placeholder="you@example.com" value="' + esc(c.email || "") + '" style="flex:1 1 220px">' +
+        '<button class="btn primary" data-act="requestCode"' + (c.busy ? " disabled" : "") + ">Email me a code</button></div>";
+    } else {
+      html += '<p class="card-note">' + esc(c.message || "") + " Check " + esc(c.email) + " (and the junk folder).</p>" +
+        '<div class="toolbar"><input type="text" id="codeValue" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="6-digit code" style="flex:0 1 160px;font-size:1.1rem;letter-spacing:0.1em">' +
+        '<button class="btn primary" data-act="checkCode"' + (c.busy ? " disabled" : "") + ">Sign in</button></div>" +
+        '<label class="check" style="margin:4px 0 10px"><input type="checkbox" id="codeKeep"' + (c.keep ? " checked" : "") + "> Keep me signed in on this device for 7 days</label>" +
+        '<button class="btn small" data-act="codeRestart">Use a different address or send a new code</button>';
+    }
+    if (c.error) html += '<p class="msg bad">' + esc(c.error) + "</p>";
+    html += "</div>";
     return html;
   }
 
@@ -672,8 +714,11 @@
       tabsEl.hidden = true;
       head.innerHTML = "";
       status.textContent = state.busy ? "Loading the register (the first load can take a few seconds)..." : "";
-      main.innerHTML = state.busy && state.token ? '<div class="card"><p class="muted">Loading the register...</p></div>' : viewSignIn();
-      if (!state.token) drawSignIn();
+      const signingIn = state.token || state.session;
+      main.innerHTML = state.busy && signingIn ? '<div class="card"><p class="muted">Loading the register...</p></div>' : viewSignIn();
+      if (!signingIn) drawSignIn();
+      const ce = document.getElementById("codeValue");
+      if (ce) ce.focus();
       return;
     }
     tabsEl.hidden = false;
@@ -729,6 +774,31 @@
     const b = t.closest("[data-act]");
     if (!b || b.disabled) return;
     const act = b.dataset.act;
+    if (act === "requestCode") {
+      const email = (document.getElementById("codeEmail").value || "").trim();
+      state.code = { email: email, busy: true };
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { state.code = { email: email, error: "Please enter a valid email address." }; render(); return; }
+      render();
+      api({ action: "requestCode", email: email }).then(function (res) {
+        state.code = res && res.ok ? { email: email, sent: true, message: res.message } : { email: email, error: (res && res.error) || "Couldn't send a code." };
+        render();
+      }).catch(function () { state.code = { email: email, error: "Couldn't reach the membership service. Please try again." }; render(); });
+      return;
+    }
+    if (act === "checkCode") {
+      const c = state.code || {};
+      const code = (document.getElementById("codeValue").value || "").replace(/\D/g, "");
+      const keep = document.getElementById("codeKeep").checked;
+      state.code = Object.assign({}, c, { busy: true, error: "", keep: keep });
+      render();
+      api({ action: "checkCode", email: c.email, code: code }).then(function (res) {
+        if (res && res.ok) { saveSession(res.session, res.expires, keep); startSession(res.session); return; }
+        state.code = Object.assign({}, c, { busy: false, keep: keep, error: (res && res.error) || "That code didn't work." });
+        render();
+      }).catch(function () { state.code = Object.assign({}, c, { busy: false, error: "Couldn't reach the membership service. Please try again." }); render(); });
+      return;
+    }
+    if (act === "codeRestart") { state.code = { email: (state.code || {}).email }; render(); return; }
     if (act === "signout") signOut("");
     else if (act === "refresh") { state.msgFor = null; call({ action: "list" }); }
     else if (act === "print") window.print();
@@ -802,6 +872,11 @@
       state.msgFor = "reminder";
       call({ action: "sendReminder", agb: m.agb }, function (res) { return "Reminder sent to " + res.result.member + " (" + res.result.sentTo + ")."; });
     }
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Enter") return;
+    const go = ev.target.id === "codeEmail" ? "requestCode" : ev.target.id === "codeValue" ? "checkCode" : null;
+    if (go) { ev.preventDefault(); const b = document.querySelector('[data-act="' + go + '"]'); if (b && !b.disabled) b.click(); }
   });
   document.addEventListener("input", function (ev) {
     if (ev.target.id === "search") { state.search = ev.target.value; state.focusSearch = true; render(); }
@@ -960,8 +1035,9 @@
     });
   }
 
-  const remembered = savedToken();
-  if (remembered) onCredential({ credential: remembered });
+  const remembered = savedAuth();
+  if (remembered && remembered.session) startSession(remembered.session);
+  else if (remembered) onCredential({ credential: remembered.token });
   else render();
 })();
 </script>
