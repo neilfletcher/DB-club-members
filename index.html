@@ -250,6 +250,7 @@
 (function () {
   "use strict";
   const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
+  const NEEDS_SERVICE = 6; // the members-service.gs version this page was built for
   const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
 
   const TABS = [
@@ -731,6 +732,9 @@
     status.textContent = state.busy ? String(state.busy) : "Today " + uk(d.today) + (d.lastExportDate ? " · export of " + uk(d.lastExportDate) : "");
     const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails }[state.tab];
     let html = "";
+    if (!(d.serviceVersion >= NEEDS_SERVICE)) html += '<div class="banner bad"><strong>The membership service is an older version than this page</strong>, so some changes (such as recording payments) won\'t save and it will be slower. ' +
+      "In the Apps Script editor: paste in the latest members-service.gs, Save, then Deploy &gt; Manage deployments &gt; Edit (pencil) &gt; Version: <strong>New version</strong> &gt; Deploy. " +
+      "(Don't use \"New deployment\": that makes a new web address this page doesn't use.)</div>";
     if (state.msg && !state.msgFor) html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
     main.innerHTML = html + view(d);
     const s = document.getElementById("search");
@@ -780,7 +784,9 @@
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { state.code = { email: email, error: "Please enter a valid email address." }; render(); return; }
       render();
       api({ action: "requestCode", email: email }).then(function (res) {
-        state.code = res && res.ok ? { email: email, sent: true, message: res.message } : { email: email, error: (res && res.error) || "Couldn't send a code." };
+        const oldService = res && (res.error === "not-admin" || res.error === "Unknown action.");
+        state.code = res && res.ok ? { email: email, sent: true, message: res.message }
+          : { email: email, error: oldService ? "The membership service hasn't been updated for sign-in codes yet: paste the latest members-service.gs into Apps Script and deploy a new version." : (res && res.error) || "Couldn't send a code." };
         render();
       }).catch(function () { state.code = { email: email, error: "Couldn't reach the membership service. Please try again." }; render(); });
       return;
@@ -807,7 +813,18 @@
       const date = document.getElementById("dPayment").value;
       if (!date) return;
       state.msgFor = null;
-      call({ action: "update", agb: state.selected, fields: { payment: date } }, "Club dues payment recorded.");
+      const agb = state.selected;
+      const before = (state.data.members.find(function (x) { return x.agb === agb; }) || {}).duesDue || "";
+      call({ action: "update", agb: agb, fields: { payment: date } }).then(function (res) {
+        if (!res) return;
+        const after = (res.members.find(function (x) { return x.agb === agb; }) || {}).duesDue || "";
+        state.msg = after && after !== before
+          ? { bad: false, text: "Club dues payment recorded: now paid until " + uk(after) + "." }
+          : after && (res.members.find(function (x) { return x.agb === agb; }) || {}).duesPaid === date
+            ? { bad: false, text: "That payment was already recorded: paid until " + uk(after) + "." }
+            : { bad: true, text: "The payment didn't save (the date is still " + (uk(before) || "not set") + "). The membership service is probably an older version: deploy the latest members-service.gs." };
+        render();
+      });
     }
     else if (act === "saveDetail") {
       const agb = state.selected;
