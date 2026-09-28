@@ -250,7 +250,7 @@
 (function () {
   "use strict";
   const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
-  const NEEDS_SERVICE = 6; // the members-service.gs version this page was built for
+  const NEEDS_SERVICE = 7; // the members-service.gs version this page was built for
   const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
 
   const TABS = [
@@ -814,15 +814,15 @@
       if (!date) return;
       state.msgFor = null;
       const agb = state.selected;
-      const before = (state.data.members.find(function (x) { return x.agb === agb; }) || {}).duesDue || "";
+      const cur = state.data.members.find(function (x) { return x.agb === agb; }) || {};
+      const before = cur.duesDue || "";
+      if (cur.duesPaid === date && !window.confirm("A payment on " + uk(date) + " is already recorded for " + name(cur) + ". Record another payment, moving their dues on to " + uk(addYear(before)) + "?")) return;
       call({ action: "update", agb: agb, fields: { payment: date } }).then(function (res) {
         if (!res) return;
         const after = (res.members.find(function (x) { return x.agb === agb; }) || {}).duesDue || "";
         state.msg = after && after !== before
           ? { bad: false, text: "Club dues payment recorded: now paid until " + uk(after) + "." }
-          : after && (res.members.find(function (x) { return x.agb === agb; }) || {}).duesPaid === date
-            ? { bad: false, text: "That payment was already recorded: paid until " + uk(after) + "." }
-            : { bad: true, text: "The payment didn't save (the date is still " + (uk(before) || "not set") + "). The membership service is probably an older version: deploy the latest members-service.gs." };
+          : { bad: true, text: "The payment didn't save (the date is still " + (uk(before) || "not set") + "). The membership service is probably an older version: deploy the latest members-service.gs." };
         render();
       });
     }
@@ -842,7 +842,11 @@
       const agbs = Object.keys(state.picked).filter(function (k) { return state.picked[k]; });
       const date = document.getElementById("bulkDate").value;
       state.msgFor = null;
-      call({ action: "duesMany", agbs: agbs, date: date }, "Club dues recorded for " + agbs.length + " member" + (agbs.length === 1 ? "" : "s") + ".").then(function (res) { if (res) { state.picked = {}; render(); } });
+      call({ action: "duesMany", agbs: agbs, date: date }, function (res) {
+        const r = res.result || { recorded: agbs.length, skipped: 0 };
+        return "Club dues recorded for " + r.recorded + " member" + (r.recorded === 1 ? "" : "s") + "." +
+          (r.skipped ? " " + r.skipped + " already had a payment on " + uk(date) + " recorded, so they were left alone (record a second payment on their own page if it's real)." : "");
+      }).then(function (res) { if (res) { state.picked = {}; render(); } });
     }
     else if (act === "clearPicks") { state.picked = {}; render(); }
     else if (act === "addToggle") { state.adding = !state.adding; render(); }
