@@ -309,11 +309,19 @@
 
   // ---------------------------------------------------------------- service
   // Actions that are safe to repeat if the connection drops part-way.
-  const RETRY_SAFE = { list: 1, previewReminder: 1, checkNow: 1, setSetting: 1, update: 1, duesMany: 1 };
+  const RETRY_SAFE = { list: 1, previewReminder: 1, checkNow: 1 };
+  // Google sometimes takes 10 to 30 seconds to pass a request on, even though
+  // the script itself answers in about a second. So rather than wait a
+  // minute, give up on a slow attempt after ATTEMPT_MS and try again.
+  // Changes carry a request id (rid), so a repeat is never applied twice.
+  const ATTEMPT_MS = window.__membersAttemptMs || 20000;
+  const MAX_ATTEMPTS = 4;
+  function retryable(body) { return !!(RETRY_SAFE[body.action] || body.rid); }
   function api(body, attempt) {
     attempt = attempt || 1;
     const ctrl = window.AbortController ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 60000) : null;
+    const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, ATTEMPT_MS) : null;
+    if (attempt > 1 && state.busy) { state.busy = (body.action === "list" ? "Loading" : "Saving") + " (Google is slow, trying again: " + attempt + " of " + MAX_ATTEMPTS + ")..."; renderStatus(); }
     return fetch(SERVICE_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign(state.session ? { session: state.session } : { token: state.token }, body)), signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) { return r.text(); })
       .then(function (text) {
@@ -322,12 +330,13 @@
       })
       .catch(function (err) {
         clearTimeout(timer);
-        if (attempt < 2 && RETRY_SAFE[body.action]) {
-          return new Promise(function (r) { setTimeout(r, 1200); }).then(function () { return api(body, attempt + 1); });
+        if (attempt < MAX_ATTEMPTS && retryable(body)) {
+          return new Promise(function (r) { setTimeout(r, 800 * attempt); }).then(function () { return api(body, attempt + 1); });
         }
         throw err;
       });
   }
+
   const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1 };
   function newRid() {
     try { return crypto.randomUUID(); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
@@ -352,11 +361,25 @@
       if (okMsg) state.msg = { bad: false, text: typeof okMsg === "function" ? okMsg(res) : okMsg };
       render();
       return res;
-    }).catch(function (err) {
+    }).catch(function () {
       state.busy = false;
-      state.msg = { bad: true, text: err && err.name === "AbortError"
-        ? "The membership service took too long to answer. Please try again."
-        : "Couldn't reach the membership service (it may be busy for a moment). Please try again." + (RETRY_SAFE[body.action] ? "" : " Check the page before repeating, in case it went through.") };
+      if (body.rid) {
+        // The change may well have gone through: look again rather than guess.
+        state.msg = { bad: true, text: "Google didn't answer in time, so the page is checking whether your change saved..." };
+        render();
+        setTimeout(function () {
+          api({ action: "list" }).then(function (res) {
+            if (res && res.ok) state.data = res;
+            state.msg = { bad: true, text: "Google was too slow to confirm that change. The page has been refreshed: check whether it saved before doing it again. (If it did, doing it again with the same details is harmless.)" };
+            render();
+          }).catch(function () {
+            state.msg = { bad: true, text: "Google isn't answering at the moment. Please try again in a minute; nothing will be saved twice." };
+            render();
+          });
+        }, 1500);
+        return null;
+      }
+      state.msg = { bad: true, text: "Google isn't answering at the moment (it can take a minute to recover). Please try again." };
       render();
       return null;
     });
@@ -753,6 +776,11 @@
     if (s && state.focusSearch) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); state.focusSearch = false; }
   }
 
+  function renderStatus() {
+    const st = document.getElementById("statusLine");
+    if (st && state.busy) st.textContent = String(state.busy);
+  }
+
   function setTab(t) {
     state.tab = t; state.msg = null; state.msgFor = null;
     history.replaceState(null, "", "#" + t);
@@ -1064,7 +1092,7 @@
       const exportDate = m ? m[1] + "-" + m[2] + "-" + m[3] : lm.getFullYear() + "-" + String(lm.getMonth() + 1).padStart(2, "0") + "-" + String(lm.getDate()).padStart(2, "0");
       state.uploadMsg = { bad: false, text: "Sending " + (small.length - 1) + " rows..." };
       render();
-      return api({ action: "upload", fileName: file.name, exportDate: exportDate, table: small });
+      return api({ action: "upload", rid: newRid(), fileName: file.name, exportDate: exportDate, table: small });
     }).then(function (res) {
       if (!res) return;
       if (!res.ok) {
