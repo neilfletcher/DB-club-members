@@ -242,6 +242,7 @@
   <footer class="foot">
     Member details come from the Archery GB (Sport:80) export and are kept in the committee's private register. No member details are stored in this browser, only your sign-in.
     Addresses, dates of birth and membership types are never kept.
+    <span id="timingNote"></span>
   </footer>
 </div>
 
@@ -250,7 +251,7 @@
 (function () {
   "use strict";
   const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
-  const NEEDS_SERVICE = 7; // the members-service.gs version this page was built for
+  const NEEDS_SERVICE = 8; // the members-service.gs version this page was built for
   const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
 
   const TABS = [
@@ -327,10 +328,19 @@
         throw err;
       });
   }
+  const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1 };
+  function newRid() {
+    try { return crypto.randomUUID(); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
+  }
   function call(body, okMsg) {
+    // Every change gets its own request id, reused if the page has to retry,
+    // so a slow answer can never make the same change happen twice.
+    if (WRITES[body.action] && !body.rid) body = Object.assign({ rid: newRid() }, body);
     state.busy = body.action === "list" ? "Loading..." : "Saving..."; state.msg = null; render();
+    const started = Date.now();
     return api(body).then(function (res) {
       state.busy = false;
+      if (res && res.timing) state.timing = { page: Date.now() - started, service: res.timing.total };
       if (!res || !res.ok) {
         if (res && res.error === "not-admin") { signOut("That Google account isn't on the committee list, or your sign-in has expired. Please sign in again."); return null; }
         state.msg = { bad: true, text: (res && res.error) || "The request failed." };
@@ -730,12 +740,14 @@
     }).join("");
     head.innerHTML = '<span class="muted small">' + esc(state.email || "") + '</span> <button class="btn" data-act="refresh">Refresh</button> <button class="btn" data-act="signout">Sign out</button>';
     status.textContent = state.busy ? String(state.busy) : "Today " + uk(d.today) + (d.lastExportDate ? " · export of " + uk(d.lastExportDate) : "");
+    const tn = document.getElementById("timingNote");
+    if (tn) tn.textContent = state.timing ? " Last answer: " + (state.timing.page / 1000).toFixed(1) + "s (service " + (state.timing.service / 1000).toFixed(1) + "s)." : "";
     const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails }[state.tab];
     let html = "";
     if (!(d.serviceVersion >= NEEDS_SERVICE)) html += '<div class="banner bad"><strong>The membership service is an older version than this page</strong>, so some changes (such as recording payments) won\'t save and it will be slower. ' +
       "In the Apps Script editor: paste in the latest members-service.gs, Save, then Deploy &gt; Manage deployments &gt; Edit (pencil) &gt; Version: <strong>New version</strong> &gt; Deploy. " +
       "(Don't use \"New deployment\": that makes a new web address this page doesn't use.)</div>";
-    if (state.msg && !state.msgFor) html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
+    if (state.msg && !state.msgFor && state.msg.text !== "same-date-payment") html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
     main.innerHTML = html + view(d);
     const s = document.getElementById("search");
     if (s && state.focusSearch) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); state.focusSearch = false; }
@@ -778,6 +790,8 @@
     const b = t.closest("[data-act]");
     if (!b || b.disabled) return;
     const act = b.dataset.act;
+    // While a change is being saved, ignore further save clicks.
+    if (state.busy && /^(recordPayment|saveDetail|bulkDues|addSave|sendReminder|testReminder|sendTest|checkNow)$/.test(act)) return;
     if (act === "requestCode") {
       const email = (document.getElementById("codeEmail").value || "").trim();
       state.code = { email: email, busy: true };
@@ -816,8 +830,19 @@
       const agb = state.selected;
       const cur = state.data.members.find(function (x) { return x.agb === agb; }) || {};
       const before = cur.duesDue || "";
-      if (cur.duesPaid === date && !window.confirm("A payment on " + uk(date) + " is already recorded for " + name(cur) + ". Record another payment, moving their dues on to " + uk(addYear(before)) + "?")) return;
-      call({ action: "update", agb: agb, fields: { payment: date } }).then(function (res) {
+      const ask = function () { return window.confirm("A payment on " + uk(date) + " is already recorded for " + name(cur) + ". Is this a second, separate payment? Recording it moves their dues on another year."); };
+      let repeatOk = false;
+      if (cur.duesPaid === date) { if (!ask()) return; repeatOk = true; }
+      const send = function (fields) { return call({ action: "update", agb: agb, fields: fields }); };
+      send(repeatOk ? { payment: date, repeatOk: true } : { payment: date }).then(function (res) {
+        // The service spotted the same date (e.g. the page was out of date): ask, then send again.
+        if (!res && state.msg && state.msg.text === "same-date-payment") {
+          state.msg = null;
+          if (!ask()) { render(); return null; }
+          return send({ payment: date, repeatOk: true });
+        }
+        return res;
+      }).then(function (res) {
         if (!res) return;
         const after = (res.members.find(function (x) { return x.agb === agb; }) || {}).duesDue || "";
         state.msg = after && after !== before
