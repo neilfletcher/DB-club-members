@@ -251,7 +251,7 @@
 (function () {
   "use strict";
   const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
-  const NEEDS_SERVICE = 8; // the members-service.gs version this page was built for
+  const NEEDS_SERVICE = 9; // the members-service.gs version this page was built for
   const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
 
   const TABS = [
@@ -337,7 +337,7 @@
       });
   }
 
-  const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1 };
+  const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1, merge: 1 };
   function newRid() {
     try { return crypto.randomUUID(); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
   }
@@ -352,6 +352,12 @@
       if (res && res.timing) state.timing = { page: Date.now() - started, service: res.timing.total };
       if (!res || !res.ok) {
         if (res && res.error === "not-admin") { signOut("That Google account isn't on the committee list, or your sign-in has expired. Please sign in again."); return null; }
+        if (res && /^stale:/.test(res.error)) {
+          state.msg = { bad: true, text: "Someone else (or another tab) changed this member after you opened them, so nothing was saved. The page has been refreshed: please make your change again." };
+          render();
+          api({ action: "list" }).then(function (r2) { if (r2 && r2.ok) { state.data = r2; render(); } }).catch(function () {});
+          return null;
+        }
         state.msg = { bad: true, text: (res && res.error) || "The request failed." };
         render();
         return null;
@@ -499,6 +505,34 @@
     return '<div class="banner info">Latest Archery GB export: <strong>' + esc(uk(last)) + "</strong> (" + esc(inDays(-age).replace("in ", "")) + ").</div>";
   }
 
+  // The same name on more than one row, e.g. added by hand and then imported
+  // from Archery GB under a different number.
+  function nameKey(m) { return (m.first + " " + m.last).toLowerCase().replace(/[^a-z]+/g, " ").trim(); }
+  function duplicates(d) {
+    const groups = {};
+    d.members.filter(function (m) { return !m.left; }).forEach(function (m) {
+      const k = nameKey(m);
+      if (k) (groups[k] = groups[k] || []).push(m);
+    });
+    return Object.keys(groups).filter(function (k) { return groups[k].length > 1; }).map(function (k) {
+      // Keep the row the latest Archery GB export knows about.
+      return groups[k].slice().sort(function (a, b) { return (b.lastInExport || "") < (a.lastInExport || "") ? -1 : (b.lastInExport || "") > (a.lastInExport || "") ? 1 : 0; });
+    });
+  }
+  function viewDuplicates(d) {
+    const dups = duplicates(d);
+    if (!dups.length) return "";
+    return '<div class="card"><h2>Possible duplicates</h2><p class="card-note">These names appear more than once, usually because someone was added (or had a payment recorded) before Archery GB gave them their number. Merging keeps the row from the Archery GB export and carries over club dues, notes and anything missing.</p>' +
+      dups.map(function (g) {
+        const keep = g[0];
+        return g.slice(1).map(function (other) {
+          const row = function (m) { return esc(m.agb) + " (" + (m.lastInExport ? "in AGB export of " + esc(uk(m.lastInExport)) : "added by hand") + "; club dues " + (m.duesDue ? "paid until " + esc(uk(m.duesDue)) : "not recorded") + ")"; };
+          return '<div class="banner warn" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between"><div><strong>' + esc(name(keep)) + "</strong><br><span class=\"small\">Keep " + row(keep) + "<br>Merge in " + row(other) + "</span></div>" +
+            '<button class="btn small" data-act="merge" data-keep="' + esc(keep.agb) + '" data-remove="' + esc(other.agb) + '">Merge</button></div>';
+        }).join("");
+      }).join("") + "</div>";
+  }
+
   function viewOverview(d) {
     const act = d.members.filter(function (m) { return !m.left; });
     const cleared = act.filter(function (m) { return m.cleared; }).length;
@@ -506,7 +540,7 @@
     const agbGone = act.filter(function (m) { return m.agbState === "expired" || m.agbState === "lapsed" || m.agbState === "unknown"; }).length;
     const duesOwed = act.filter(function (m) { return m.duesState === "unpaid" || m.duesState === "overdue"; }).length;
     const missing = act.filter(function (m) { return m.missing; }).length;
-    let html = exportBanner(d);
+    let html = exportBanner(d) + viewDuplicates(d);
     if (!d.emailsEnabled) html += '<div class="banner info">Emails are switched off: nothing is sent to members or the committee. See the Emails tab for what would go out.</div>';
     html += '<div class="tile-row">' +
       tile("Members", act.length, "", "all", act.filter(function (m) { return m.under18; }).length + " under 18") +
@@ -547,6 +581,7 @@
     let html = "";
     const sel = state.selected && d.members.find(function (m) { return m.agb === state.selected; });
     if (sel) html += viewDetail(sel, d);
+    html += viewDuplicates(d);
     const f = FILTERS.find(function (x) { return x.key === state.filter; }) || FILTERS[0];
     const q = state.search.trim().toLowerCase();
     const list = d.members.filter(f.test).filter(function (m) {
@@ -631,6 +666,14 @@
       '<label class="check" style="margin:10px 0 14px"><input type="checkbox" id="dLeft"' + (m.left ? " checked" : "") + "> Left the club (hides them from lists and reminders)</label>" +
       '<button class="btn primary" data-act="saveDetail">Save changes</button>';
     html += viewReminder(m, d);
+    const h = state.history && state.history.agb === m.agb ? state.history : null;
+    html += '<h3 style="margin-top:22px">History</h3>';
+    if (!h) html += '<button class="btn small" data-act="history">Show changes made to ' + esc(m.first || "this member") + "</button>";
+    else if (h.loading) html += '<p class="muted small">Loading...</p>';
+    else if (h.error) html += '<p class="msg bad">' + esc(h.error) + "</p>";
+    else if (!h.rows.length) html += '<p class="muted small">No changes recorded yet (changes are recorded from 30 Sep 2026).</p>';
+    else html += '<div class="table-scroll"><table><thead><tr><th>When</th><th>By</th><th>What</th><th>From</th><th>To</th></tr></thead><tbody>' +
+      h.rows.map(function (r) { return '<tr><td class="nowrap">' + esc(r.when) + "</td><td>" + esc(r.by) + "</td><td>" + esc(r.what) + "</td><td>" + esc(r.from) + "</td><td>" + esc(r.to) + "</td></tr>"; }).join("") + "</tbody></table></div>";
     return html + "</div>";
   }
 
@@ -807,7 +850,7 @@
     }
     const open = t.closest("[data-open]");
     if (open && !t.closest("input, a, button")) {
-      state.selected = open.dataset.open; state.msg = null; state.msgFor = null; state.reminderPreview = null;
+      state.selected = open.dataset.open; state.msg = null; state.msgFor = null; state.reminderPreview = null; state.history = null;
       if (state.tab !== "members") { state.filter = "all"; setTab("members"); } else render();
       const el = document.getElementById("detail");
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -819,7 +862,7 @@
     if (!b || b.disabled) return;
     const act = b.dataset.act;
     // While a change is being saved, ignore further save clicks.
-    if (state.busy && /^(recordPayment|saveDetail|bulkDues|addSave|sendReminder|testReminder|sendTest|checkNow)$/.test(act)) return;
+    if (state.busy && /^(recordPayment|saveDetail|bulkDues|addSave|sendReminder|testReminder|sendTest|checkNow|merge)$/.test(act)) return;
     if (act === "requestCode") {
       const email = (document.getElementById("codeEmail").value || "").trim();
       state.code = { email: email, busy: true };
@@ -881,15 +924,37 @@
     }
     else if (act === "saveDetail") {
       const agb = state.selected;
-      state.msgFor = null;
-      call({ action: "update", agb: agb, fields: {
+      const m = state.data.members.find(function (x) { return x.agb === agb; }) || {};
+      // Only send what was actually changed, along with what the page showed
+      // before, so a page left open can never undo someone else's change.
+      const shown = { duesUntil: m.duesDue || "", expiry: m.expiry || "", email: m.email || "", phone: m.phone || "", notes: m.notes || "", left: !!m.left };
+      const now = {
         duesUntil: document.getElementById("dDuesUntil").value,
         expiry: document.getElementById("dExpiry").value,
-        email: document.getElementById("dEmail").value,
-        phone: document.getElementById("dPhone").value,
+        email: document.getElementById("dEmail").value.trim().toLowerCase(),
+        phone: document.getElementById("dPhone").value.trim(),
         notes: document.getElementById("dNotes").value,
         left: document.getElementById("dLeft").checked
-      } }, "Saved.");
+      };
+      const fields = {}, was = {};
+      Object.keys(now).forEach(function (k) { if (String(now[k]) !== String(shown[k])) { fields[k] = now[k]; was[k] = shown[k]; } });
+      state.msgFor = null;
+      if (!Object.keys(fields).length) { state.msg = { bad: false, text: "Nothing has changed, so there was nothing to save." }; render(); return; }
+      call({ action: "update", agb: agb, fields: fields, was: was }, "Saved.");
+    }
+    else if (act === "merge") {
+      const keep = b.dataset.keep, remove = b.dataset.remove;
+      if (!window.confirm("Merge AGB number " + remove + " into " + keep + "? The club dues and notes are carried over and the other row is removed.")) return;
+      state.msgFor = null; state.selected = null;
+      call({ action: "merge", keep: keep, remove: remove }, "Merged.");
+    }
+    else if (act === "history") {
+      const agb = state.selected;
+      state.history = { agb: agb, loading: true }; render();
+      api({ action: "history", agb: agb }).then(function (res) {
+        state.history = { agb: agb, rows: res && res.ok ? res.history : [], error: res && res.ok ? "" : ((res && res.error) || "Couldn't load the history.") };
+        render();
+      }).catch(function () { state.history = { agb: agb, rows: [], error: "Couldn't reach the membership service." }; render(); });
     }
     else if (act === "bulkDues") {
       const agbs = Object.keys(state.picked).filter(function (k) { return state.picked[k]; });
