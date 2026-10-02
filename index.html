@@ -251,7 +251,7 @@
 (function () {
   "use strict";
   const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
-  const NEEDS_SERVICE = 9; // the members-service.gs version this page was built for
+  const NEEDS_SERVICE = 10; // the members-service.gs version this page was built for
   const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
 
   const TABS = [
@@ -683,15 +683,29 @@
     return "Their dues currently run until " + uk(m.duesDue) + ". A payment made before then (or up to " + state.data.duesRejoinDays + " days after) moves that to " + uk(addYear(m.duesDue)) + ", so paying early doesn't change their renewal date.";
   }
 
+  // What a reminder to this member would cover (the service builds the email itself).
+  function issuesOf(m, d) {
+    const out = [];
+    if (m.agbState === "due") out.push("Archery GB runs out " + uk(m.expiry));
+    else if (m.agbState === "expired" || m.agbState === "lapsed") out.push("Archery GB ran out " + uk(m.expiry));
+    if (m.duesState === "due") out.push("club fees due " + uk(m.duesDue));
+    else if (m.duesState === "overdue") out.push("club fees overdue since " + uk(m.duesDue));
+    else if (m.duesState === "unpaid") out.push("no club fees recorded");
+    return out;
+  }
+
   function viewReminder(m, d) {
     const sent = (d.emails || []).filter(function (e) { return m.email && e.to === m.email && e.result === "sent"; })[0];
-    const canSend = d.emailsEnabled && m.email && m.expiry && !m.left;
+    const due = issuesOf(m, d);
+    const canSend = d.emailsEnabled && m.email && due.length && !m.left;
     let html = '<h3 style="margin-top:22px">Reminder email</h3>' +
-      '<p class="card-note">Send ' + esc(m.first || "them") + " their Archery GB reminder now, whatever the date. Preview it first, or send a test copy to yourself (" + esc(state.email || "") + ").</p>";
-    if (!m.expiry) html += '<p class="msg bad">There\'s no AGB expiry date for this member yet, so there\'s nothing to remind them about.</p>';
+      '<p class="card-note">Email ' + esc(m.first || "them") + " about whatever is due or has run out: their Archery GB membership, their club fees, or both. Preview it first, or send a test copy to yourself (" + esc(state.email || "") + ").</p>";
+    html += due.length
+      ? '<p class="small" style="margin:0 0 8px">It would cover: ' + esc(due.join("; ")) + ".</p>"
+      : '<p class="muted small">Nothing is due for ' + esc(m.first || "them") + ": their Archery GB membership and club fees are both fine for at least the next " + d.dueSoonDays + " days.</p>";
     html += '<div class="toolbar">' +
-      '<button class="btn" data-act="previewReminder"' + (m.expiry ? "" : " disabled") + ">Preview</button>" +
-      '<button class="btn" data-act="testReminder"' + (m.expiry && d.testEmailsEnabled ? "" : " disabled") + ">Send me a test</button>" +
+      '<button class="btn" data-act="previewReminder"' + (due.length ? "" : " disabled") + ">Preview</button>" +
+      '<button class="btn" data-act="testReminder"' + (due.length && d.testEmailsEnabled ? "" : " disabled") + ">Send me a test</button>" +
       '<button class="btn primary" data-act="sendReminder"' + (canSend ? "" : " disabled") + ">Send to " + esc(m.email || "member") + "</button></div>";
     if (!d.emailsEnabled) html += '<p class="card-note">Sending to members is switched off (EMAILS_ENABLED = false in the script). Preview and test copies to yourself still work.</p>';
     else if (!m.email) html += '<p class="card-note">Add an email address above to send them a reminder.</p>';
@@ -755,21 +769,23 @@
       ? '<div class="banner good"><strong>Emails are switched on in the service.</strong> Each type below also has its own switch.</div>'
       : '<div class="banner warn"><strong>Emails are switched off.</strong> The service can\'t send anything to anyone until EMAILS_ENABLED is changed to true in the script. The switches below are remembered for when that happens.</div>';
     html += '<div class="card"><h2>Settings</h2>' +
-      '<label class="check"><input type="checkbox" data-setting="memberReminders"' + (s.memberReminders === "on" ? " checked" : "") + "> Remind members " + d.reminderDays.join(" and ") + " days before their AGB membership runs out</label>" +
-      '<p class="card-note" style="margin-left:26px">Sent at about 7am. One email per address, so a family sharing an email gets one message.</p>' +
+      '<label class="check"><input type="checkbox" data-setting="memberReminders"' + (s.memberReminders === "on" ? " checked" : "") + "> Email members about their Archery GB membership and club fees</label>" +
+      '<p class="card-note" style="margin-left:26px">Sent at about 7am: a reminder ' + d.reminderDays.join(" and ") + " days before either is due, and once when they can no longer shoot (club fees: the day after they're due; Archery GB: once a newer export confirms it, or " + (d.agbLapsedEmailDays || 7) + " days after it ran out). " +
+      "Each email covers whatever applies: Archery GB, club fees, or both. One email per address, so a family sharing an email gets one message. Members with no club fees recorded at all are only emailed if you send it by hand.</p>" +
       '<label class="check"><input type="checkbox" data-setting="committeeSummary"' + (s.committeeSummary === "on" ? " checked" : "") + "> Send the committee a summary every Monday</label>" +
       '<div class="form-grid">' +
       field("Committee summary goes to", '<input type="text" id="setCommittee" value="' + esc(s.committeeEmails) + '">') +
       field("Replies go to (optional)", '<input type="email" id="setReplyTo" value="' + esc(s.replyTo) + '" placeholder="e.g. membership@...">') +
-      '</div><button class="btn" data-act="saveEmails">Save addresses</button> <button class="btn" data-act="sendTest"' + (d.testEmailsEnabled ? "" : " disabled") + ">Send me a test summary</button>" +
-      (d.preview.reminder && d.preview.reminder.agb ? ' <button class="btn" data-act="testReminder" data-agb="' + esc(d.preview.reminder.agb) + '"' + (d.testEmailsEnabled ? "" : " disabled") + ">Send me a test reminder</button>" : "") +
+      "</div>" + field("How to pay club fees (goes in any email about club fees)", '<textarea id="setDuesInfo" maxlength="1000">' + esc(s.duesInfo || "") + "</textarea>") +
+      '<div style="margin-top:10px"><button class="btn" data-act="saveEmails">Save</button> <button class="btn" data-act="sendTest"' + (d.testEmailsEnabled ? "" : " disabled") + ">Send me a test summary</button>" +
+      (d.preview.reminder && d.preview.reminder.agb ? ' <button class="btn" data-act="testReminder" data-agb="' + esc(d.preview.reminder.agb) + '"' + (d.testEmailsEnabled ? "" : " disabled") + ">Send me a test reminder</button>" : "") + "</div>" +
       '<p class="card-note" style="margin-top:8px">Test copies only ever go to you (' + esc(state.email || "") + '), never to members. To send a real reminder to one archer, open them on the Members tab.</p>';
     if (state.msg && state.msgFor === "emails") html += '<p class="msg ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</p>";
     html += "</div>";
     const due = d.preview.dueToday || [];
     html += '<div class="card"><h2>Reminders due today</h2><p class="card-note">' + (d.emailsEnabled && s.memberReminders === "on" ? "These go out at the next 7am run." : "These would go out if reminders were switched on.") + "</p>" +
       (due.length ? '<div class="table-scroll"><table><thead><tr><th>To</th><th>For</th><th>Reminder</th></tr></thead><tbody>' + due.map(function (g) {
-        return "<tr><td>" + esc(g.email) + "</td><td>" + esc(g.names.join(", ")) + "</td><td>" + esc(g.kind.map(function (k) { return k + "-day"; }).filter(function (k, i, a) { return a.indexOf(k) === i; }).join(", ")) + "</td></tr>";
+        return "<tr><td>" + esc(g.email) + "</td><td>" + esc(g.names.join(", ")) + "</td><td>" + esc(g.kind.filter(function (k, i, a) { return a.indexOf(k) === i; }).join("; ")) + "</td></tr>";
       }).join("") + "</tbody></table></div>" : '<p class="muted small">None due today.</p>') + "</div>";
     if (d.preview.reminder) html += '<div class="card"><h2>What a reminder looks like</h2><p class="card-note">To ' + esc(d.preview.reminder.to) + "</p><pre class=\"email\"><strong>" + esc(d.preview.reminder.subject) + "</strong>\n\n" + esc(d.preview.reminder.body) + "</pre></div>";
     html += '<div class="card"><h2>What the committee summary looks like</h2><pre class="email"><strong>' + esc(d.preview.summary.subject) + "</strong>\n\n" + esc(d.preview.summary.body) + "</pre></div>";
@@ -985,8 +1001,10 @@
     }
     else if (act === "saveEmails") {
       state.msgFor = "emails";
-      const c = document.getElementById("setCommittee").value, r = document.getElementById("setReplyTo").value;
-      call({ action: "setSetting", key: "committeeEmails", value: c }).then(function (res) { if (res) call({ action: "setSetting", key: "replyTo", value: r }, "Saved."); });
+      const c = document.getElementById("setCommittee").value, r = document.getElementById("setReplyTo").value, di = document.getElementById("setDuesInfo").value;
+      call({ action: "setSetting", key: "committeeEmails", value: c })
+        .then(function (res) { return res && call({ action: "setSetting", key: "replyTo", value: r }); })
+        .then(function (res) { return res && call({ action: "setSetting", key: "duesInfo", value: di }, "Saved."); });
     }
     else if (act === "sendTest") { state.msgFor = "emails"; call({ action: "sendTest" }, "Test summary sent to " + state.email + "."); }
     else if (act === "previewReminder") {
