@@ -10,6 +10,16 @@
   // Page views only: no names or member details are ever sent.
   gtag('config', 'G-JF54HQGVLT', { page_location: location.origin + location.pathname, page_title: 'Duston Bowmen Membership' });
 </script>
+<script>
+  // Usage events for the admin dashboard: what was done here, never who did it.
+  window.ssTrack = function (name, detail) {
+    try { if (window.gtag) gtag('event', name, detail ? { detail: String(detail).slice(0, 60) } : {}); } catch (e) {}
+  };
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-tab]');
+    if (t) window.ssTrack('tab_viewed', t.getAttribute('data-tab'));
+  }, true);
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Duston Bowmen Membership</title>
