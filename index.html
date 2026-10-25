@@ -864,8 +864,8 @@
     html += head;
     S.upcoming.forEach(function (s) {
       const open = state.notice && state.notice.id === s.id;
-      html += "<tr><td class=\"nowrap\">" + esc(dayOf(s.date)) + " " + esc(uk(s.date)) + "</td><td>" + esc(s.name) + "</td><td class=\"nowrap\">" + t12(s.start) + " to " + t12(s.end) + "</td><td>" + noticePill(s.notice) + "</td>" +
-        '<td class="no-print"><button class="btn small" data-act="openNotice" data-id="' + esc(s.id) + '">' + (open ? "Open below" : "Email members") + "</button></td></tr>";
+      html += "<tr" + (s.finished ? ' class="muted"' : "") + "><td class=\"nowrap\">" + esc(dayOf(s.date)) + " " + esc(uk(s.date)) + (s.date === d.today ? " (today)" : "") + "</td><td>" + esc(s.name) + "</td><td class=\"nowrap\">" + t12(s.start) + " to " + t12(s.end) + "</td><td>" + (s.finished && !s.notice ? '<span class="muted small">Finished</span>' : noticePill(s.notice)) + "</td>" +
+        '<td class="no-print">' + (s.finished ? "" : '<button class="btn small" data-act="openNotice" data-id="' + esc(s.id) + '">' + (open ? "Open below" : "Email members") + "</button>") + "</td></tr>";
       // The email form sits between two halves of the table, so it has the full width on a phone.
       if (open) html += "</tbody></table></div>" + composer(d, s) + head;
     });
