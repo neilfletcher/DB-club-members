@@ -202,6 +202,13 @@
   .field .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .field input { width: 100%; }
   .field .row input { width: auto; flex: 1 1 140px; }
+  @media (max-width: 600px) {
+    table.sess thead { display: none; }
+    table.sess tr { display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 8px 10px; border-bottom: 1px solid var(--gridline); }
+    table.sess td { border: 0; padding: 0; }
+    table.sess td:nth-child(1) { font-weight: 600; }
+    table.sess td:nth-child(4), table.sess td:nth-child(5) { width: 100%; }
+  }
   .check { display: flex; gap: 8px; align-items: center; font-size: 0.86rem; }
   .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; margin: 12px 0; }
   .facts div { font-size: 0.84rem; }
@@ -263,13 +270,14 @@
 (function () {
   "use strict";
   const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
-  const NEEDS_SERVICE = 10; // the members-service.gs version this page was built for
+  const NEEDS_SERVICE = 11; // the members-service.gs version this page was built for
   const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
 
   const TABS = [
     { key: "overview", label: "Overview" },
     { key: "members", label: "Members" },
     { key: "range", label: "Cleared to shoot" },
+    { key: "sessions", label: "Sessions" },
     { key: "import", label: "Import" },
     { key: "emails", label: "Emails" }
   ];
@@ -321,7 +329,7 @@
 
   // ---------------------------------------------------------------- service
   // Actions that are safe to repeat if the connection drops part-way.
-  const RETRY_SAFE = { list: 1, previewReminder: 1, checkNow: 1 };
+  const RETRY_SAFE = { list: 1, previewReminder: 1, checkNow: 1, previewNotice: 1 };
   // Google sometimes takes 10 to 30 seconds to pass a request on, even though
   // the script itself answers in about a second. So rather than wait a
   // minute, give up on a slow attempt after ATTEMPT_MS and try again.
@@ -349,7 +357,7 @@
       });
   }
 
-  const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1, merge: 1 };
+  const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1, merge: 1, sendNotice: 1 };
   function newRid() {
     try { return crypto.randomUUID(); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
   }
@@ -676,6 +684,7 @@
       '<p class="card-note">Use "Record payment" when someone pays; only change "paid until" by hand to correct a mistake. Only change the AGB date after seeing their e-card or Sport:80 (for example if they renewed after the last export). A later date from the next export always takes over.</p>' +
       field("Notes", '<textarea id="dNotes" maxlength="500">' + esc(m.notes) + "</textarea>") +
       '<label class="check" style="margin:10px 0 14px"><input type="checkbox" id="dLeft"' + (m.left ? " checked" : "") + "> Left the club (hides them from lists and reminders)</label>" +
+      '<label class="check" style="margin:0 0 14px"><input type="checkbox" id="dSessions"' + (m.sessionEmails !== false ? " checked" : "") + "> Gets emails about cancelled or changed sessions" + (m.sessionEmails === false ? " (unsubscribed)" : "") + "</label>" +
       '<button class="btn primary" data-act="saveDetail">Save changes</button>';
     html += viewReminder(m, d);
     const h = state.history && state.history.agb === m.agb ? state.history : null;
@@ -807,6 +816,105 @@
     return html;
   }
 
+  // ---------------------------------------------------------------- sessions
+  const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function dayOf(iso) { const a = iso.split("-"); return DAY[new Date(Date.UTC(+a[0], a[1] - 1, +a[2])).getUTCDay()]; }
+  function t12(hm) { const h = +hm.slice(0, 2), m = hm.slice(3, 5); return (h % 12 || 12) + (m === "00" ? "" : ":" + m) + (h < 12 ? "am" : "pm"); }
+  const KIND_LABEL = { cancelled: "Cancelled", changed: "Changed", on: "Back on" };
+  function noticePill(n) {
+    if (!n) return '<span class="muted small">On as usual</span>';
+    const cls = n.kind === "cancelled" ? "bad" : n.kind === "changed" ? "warn" : "good";
+    const st = n.status === "sent" ? "emailed to " + n.sent : /^sending|^queued/.test(n.status) ? "emails going out" : n.status;
+    return '<span class="pill ' + cls + '">' + esc(KIND_LABEL[n.kind] || n.kind) + '</span> <span class="muted small">' + esc(st) + "</span>";
+  }
+
+  function composer(d, s) {
+    const n = state.notice;
+    const S = d.sessions;
+    let html = '<div class="banner info" id="composer" style="margin:8px 0 4px">' +
+      "<strong>Email members about the " + esc(n.name) + ", " + esc(dayOf(n.date)) + " " + esc(uk(n.date)) + " (" + t12(n.start) + " to " + t12(n.end) + ")</strong>" +
+      '<div class="toolbar" style="margin:10px 0 8px">' +
+      ["cancelled", "changed", "on"].map(function (k) {
+        return '<label class="check"><input type="radio" name="nKind" value="' + k + '"' + (n.kind === k ? " checked" : "") + "> " + KIND_LABEL[k] + "</label>";
+      }).join("") + "</div>" +
+      field(n.kind === "changed" ? "What has changed (goes in the email)" : "Reason or extra detail (optional, goes in the email)",
+        '<textarea id="nReason" maxlength="600" placeholder="' + (n.kind === "changed" ? "e.g. We'll be starting at 6:30pm instead of 6pm." : n.kind === "cancelled" ? "e.g. The field is waterlogged." : "") + '">' + esc(n.reason || "") + "</textarea>") +
+      '<div class="toolbar" style="margin-top:10px">' +
+      '<button class="btn" data-act="previewNotice">Preview</button>' +
+      '<button class="btn" data-act="testNotice"' + (d.testEmailsEnabled ? "" : " disabled") + ">Send me a test</button>" +
+      '<button class="btn primary" data-act="sendNotice"' + (d.emailsEnabled && S.recipients ? "" : " disabled") + ">Send to " + S.recipients + " addresses</button>" +
+      '<button class="btn" data-act="closeNotice">Cancel</button></div>' +
+      '<p class="card-note" style="margin:0">Goes to every member not marked as having left, one email per address, leaving out anyone who has unsubscribed. The emails go out within a few minutes of pressing Send. Test copies only come to you (' + esc(state.email || "") + ").</p>";
+    if (!d.emailsEnabled) html += '<p class="card-note">Sending to members is switched off (EMAILS_ENABLED = false in the script).</p>';
+    if (state.msg && state.msgFor === "sessions" && state.msg.text !== "same-notice") html += '<p class="msg ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</p>";
+    const p = state.noticePreview;
+    if (p && p.id === n.id && p.kind === n.kind) html += '<p class="card-note" style="margin-bottom:0">Preview for ' + esc(p.sample || "a member") + " (each address gets its own copy, " + p.recipients + " in all; Google allows " + p.quota + ' more emails today)</p><pre class="email"><strong>' + esc(p.subject) + "</strong>\n\n" + esc(p.body) + "</pre>";
+    return html + "</div>";
+  }
+
+  function viewSessions(d) {
+    const S = d.sessions;
+    if (!S) return '<div class="banner bad">The membership service needs updating for session emails: deploy the latest members-service.gs.</div>';
+    let html = "";
+    if (state.msg && state.msgFor === "sessions" && !state.notice) html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
+    html += '<div class="card"><h2>Upcoming sessions</h2>' +
+      '<p class="card-note">To tell members a session is cancelled, changed or back on, press "Email members" next to it. Emails go to ' + S.recipients + " addresses" +
+      (S.unsubscribed ? " (" + S.unsubscribed + " ha" + (S.unsubscribed === 1 ? "s" : "ve") + " unsubscribed from session emails)" : "") + ". Every email has an unsubscribe link, which only stops session emails, not membership reminders.</p>";
+    const head = '<div class="table-scroll"><table class="sess"><thead><tr><th>Date</th><th>Session</th><th>Time</th><th>Status</th><th class="no-print"></th></tr></thead><tbody>';
+    html += head;
+    S.upcoming.forEach(function (s) {
+      const open = state.notice && state.notice.id === s.id;
+      html += "<tr><td class=\"nowrap\">" + esc(dayOf(s.date)) + " " + esc(uk(s.date)) + "</td><td>" + esc(s.name) + "</td><td class=\"nowrap\">" + t12(s.start) + " to " + t12(s.end) + "</td><td>" + noticePill(s.notice) + "</td>" +
+        '<td class="no-print"><button class="btn small" data-act="openNotice" data-id="' + esc(s.id) + '">' + (open ? "Open below" : "Email members") + "</button></td></tr>";
+      // The email form sits between two halves of the table, so it has the full width on a phone.
+      if (open) html += "</tbody></table></div>" + composer(d, s) + head;
+    });
+    html += "</tbody></table></div></div>";
+
+    const o = state.notice && state.notice.other && !S.upcoming.some(function (s) { return s.id === state.notice.id; }) ? state.notice : null;
+    html += '<div class="card"><h2>A session not on the timetable</h2><p class="card-note">For an extra or one-off session (a have-a-go day, a clout shoot on a different day): fill in its details, then write the email.</p>' +
+      '<div class="form-grid">' +
+      field("Date", '<input type="date" id="oDate" value="' + esc(o ? o.date : "") + '">') +
+      field("Name", '<input type="text" id="oName" maxlength="60" value="' + esc(o ? o.name : "") + '" placeholder="e.g. Have a go day">') +
+      field("Starts", '<input type="time" id="oStart" value="' + esc(o ? o.start : "18:00") + '">') +
+      field("Finishes", '<input type="time" id="oEnd" value="' + esc(o ? o.end : "20:00") + '">') +
+      '</div><button class="btn" data-act="openOther">Write the email</button>';
+    if (o) html += composer(d, o);
+    else if (state.msg && state.msgFor === "other") html += '<p class="msg bad">' + esc(state.msg.text) + "</p>";
+    html += "</div>";
+
+    html += '<div class="card"><h2>Clout season</h2><p class="card-note">Clout shoots are every ' + (S.cloutEveryDays === 14 ? "second" : S.cloutEveryDays + " days on the same") + " " + esc(dayOf(S.cloutStart || "2026-10-28")) + " (" + t12(S.clout.start) + " to " + t12(S.clout.end) + "), counting from the first clout of the season, up to the last. Set them each year; leave blank when there's no clout season.</p>" +
+      '<div class="form-grid">' +
+      field("First clout of the season", '<input type="date" id="cStart" value="' + esc(S.cloutStart) + '">') +
+      field("Last clout (or later)", '<input type="date" id="cEnd" value="' + esc(S.cloutEnd) + '">') +
+      '</div><button class="btn" data-act="saveClout">Save</button>' +
+      (S.cloutStart && dayOf(S.cloutStart) !== "Wed" ? ' <span class="msg bad small">That start date is a ' + esc(dayOf(S.cloutStart)) + ", so clouts will be on " + esc(dayOf(S.cloutStart)) + "s.</span>" : "");
+    if (state.msg && state.msgFor === "clout") html += '<p class="msg ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</p>";
+    html += "</div>";
+
+    html += '<div class="card"><h2>Session emails sent</h2>' + (S.notices.length ? '<div class="table-scroll"><table><thead><tr><th>Requested</th><th>By</th><th>Session</th><th>Notice</th><th>Status</th></tr></thead><tbody>' +
+      S.notices.map(function (n) {
+        return '<tr><td class="nowrap">' + esc(n.requested) + "</td><td>" + esc(n.by) + "</td><td>" + esc(n.name) + ", " + esc(dayOf(n.date)) + " " + esc(uk(n.date)) + " " + t12(n.start) + "</td><td>" + esc(KIND_LABEL[n.kind] || n.kind) + (n.reason ? '<div class="why">' + esc(n.reason) + "</div>" : "") + "</td><td>" + esc(n.status) + (n.status === "sent" ? " to " + esc(n.sent) : "") + "</td></tr>";
+      }).join("") + "</tbody></table></div>" : '<p class="muted small">None yet.</p>') + "</div>";
+    return html;
+  }
+
+  function noticeBody() {
+    const n = state.notice;
+    const b = { date: n.date, start: n.start, kind: n.kind, reason: n.reason || "" };
+    if (n.other) { b.end = n.end; b.name = n.name; }
+    return b;
+  }
+  // After queuing, look again twice so the status changes to "emailed" by itself.
+  function watchNotice() {
+    [75000, 150000].forEach(function (ms) {
+      setTimeout(function () {
+        if (state.busy || !state.data) return;
+        api({ action: "list" }).then(function (res) { if (res && res.ok && !state.busy) { state.data = res; render(); } }).catch(function () {});
+      }, ms);
+    });
+  }
+
   // ---------------------------------------------------------------- render
   function render() {
     document.getElementById("busy").hidden = !state.busy;
@@ -836,12 +944,12 @@
     status.textContent = state.busy ? String(state.busy) : "Today " + uk(d.today) + (d.lastExportDate ? " · export of " + uk(d.lastExportDate) : "");
     const tn = document.getElementById("timingNote");
     if (tn) tn.textContent = state.timing ? " Last answer: " + (state.timing.page / 1000).toFixed(1) + "s (service " + (state.timing.service / 1000).toFixed(1) + "s)." : "";
-    const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails }[state.tab];
+    const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails, sessions: viewSessions }[state.tab];
     let html = "";
     if (!(d.serviceVersion >= NEEDS_SERVICE)) html += '<div class="banner bad"><strong>The membership service is an older version than this page</strong>, so some changes (such as recording payments) won\'t save and it will be slower. ' +
       "In the Apps Script editor: paste in the latest members-service.gs, Save, then Deploy &gt; Manage deployments &gt; Edit (pencil) &gt; Version: <strong>New version</strong> &gt; Deploy. " +
       "(Don't use \"New deployment\": that makes a new web address this page doesn't use.)</div>";
-    if (state.msg && !state.msgFor && state.msg.text !== "same-date-payment") html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
+    if (state.msg && !state.msgFor && state.msg.text !== "same-date-payment" && state.msg.text !== "same-notice") html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
     main.innerHTML = html + view(d);
     const s = document.getElementById("search");
     if (s && state.focusSearch) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); state.focusSearch = false; }
@@ -890,7 +998,7 @@
     if (!b || b.disabled) return;
     const act = b.dataset.act;
     // While a change is being saved, ignore further save clicks.
-    if (state.busy && /^(recordPayment|saveDetail|bulkDues|addSave|sendReminder|testReminder|sendTest|checkNow|merge)$/.test(act)) return;
+    if (state.busy && /^(recordPayment|saveDetail|bulkDues|addSave|sendReminder|testReminder|sendTest|checkNow|merge|sendNotice|testNotice|previewNotice|saveClout)$/.test(act)) return;
     if (act === "requestCode") {
       const email = (document.getElementById("codeEmail").value || "").trim();
       state.code = { email: email, busy: true };
@@ -955,14 +1063,15 @@
       const m = state.data.members.find(function (x) { return x.agb === agb; }) || {};
       // Only send what was actually changed, along with what the page showed
       // before, so a page left open can never undo someone else's change.
-      const shown = { duesUntil: m.duesDue || "", expiry: m.expiry || "", email: m.email || "", phone: m.phone || "", notes: m.notes || "", left: !!m.left };
+      const shown = { duesUntil: m.duesDue || "", expiry: m.expiry || "", email: m.email || "", phone: m.phone || "", notes: m.notes || "", left: !!m.left, sessionEmails: m.sessionEmails !== false };
       const now = {
         duesUntil: document.getElementById("dDuesUntil").value,
         expiry: document.getElementById("dExpiry").value,
         email: document.getElementById("dEmail").value.trim().toLowerCase(),
         phone: document.getElementById("dPhone").value.trim(),
         notes: document.getElementById("dNotes").value,
-        left: document.getElementById("dLeft").checked
+        left: document.getElementById("dLeft").checked,
+        sessionEmails: document.getElementById("dSessions").checked
       };
       const fields = {}, was = {};
       Object.keys(now).forEach(function (k) { if (String(now[k]) !== String(shown[k])) { fields[k] = now[k]; was[k] = shown[k]; } });
@@ -1018,6 +1127,69 @@
         .then(function (res) { return res && call({ action: "setSetting", key: "replyTo", value: r }); })
         .then(function (res) { return res && call({ action: "setSetting", key: "duesInfo", value: di }, "Saved."); });
     }
+    else if (act === "openNotice") {
+      const s = state.data.sessions.upcoming.find(function (x) { return x.id === b.dataset.id; });
+      if (!s) return;
+      if (state.notice && state.notice.id === s.id) { document.getElementById("composer").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+      state.notice = { id: s.id, date: s.date, start: s.start, end: s.end, name: s.name, kind: s.notice && s.notice.kind === "cancelled" ? "on" : "cancelled", reason: "", other: s.kind === "other" };
+      state.noticePreview = null; state.msg = null; state.msgFor = null; render();
+    }
+    else if (act === "openOther") {
+      const o = { date: document.getElementById("oDate").value, name: document.getElementById("oName").value.trim(), start: document.getElementById("oStart").value, end: document.getElementById("oEnd").value };
+      state.msgFor = "other";
+      if (!o.date || o.date < state.data.today) { state.msg = { bad: true, text: "Choose a date from today on." }; render(); return; }
+      if (!o.start || !o.end || o.end <= o.start) { state.msg = { bad: true, text: "Choose a finish time after the start time." }; render(); return; }
+      if (!o.name) { state.msg = { bad: true, text: "Give the session a name (it goes in the email, e.g. \"Have a go day\")." }; render(); return; }
+      state.msg = null; state.msgFor = null; state.noticePreview = null;
+      state.notice = Object.assign(o, { id: o.date + " " + o.start, kind: "cancelled", reason: "", other: true });
+      render();
+    }
+    else if (act === "closeNotice") { state.notice = null; state.noticePreview = null; state.msg = null; render(); }
+    else if (act === "previewNotice") {
+      const n = state.notice; if (!n) return;
+      state.msgFor = "sessions"; state.msg = null; state.busy = true; render();
+      api(Object.assign({ action: "previewNotice" }, noticeBody())).then(function (res) {
+        state.busy = false;
+        if (res && res.ok) state.noticePreview = Object.assign({ id: n.id, kind: n.kind }, res.preview);
+        else if (res && res.error === "not-admin") { signOut("Your sign-in has expired. Please sign in again."); return; }
+        else state.msg = { bad: true, text: (res && res.error) || "Couldn't build the preview." };
+        render();
+      }).catch(function () { state.busy = false; state.msg = { bad: true, text: "Couldn't reach the membership service." }; render(); });
+    }
+    else if (act === "testNotice") {
+      if (!state.notice) return;
+      state.msgFor = "sessions";
+      call(Object.assign({ action: "testNotice" }, noticeBody()), function (res) { return "Test sent to " + res.result.sentTo + ". The real email would go to " + res.result.recipients + " addresses."; });
+    }
+    else if (act === "sendNotice") {
+      const n = state.notice; if (!n) return;
+      const S = state.data.sessions;
+      if (n.kind === "changed" && !(n.reason || "").trim()) { state.msgFor = "sessions"; state.msg = { bad: true, text: "Say what has changed first (it goes in the email)." }; render(); return; }
+      if (!window.confirm("Email " + S.recipients + " addresses now to say the " + n.name + " on " + dayOf(n.date) + " " + uk(n.date) + " is " + (n.kind === "cancelled" ? "cancelled" : n.kind === "changed" ? "changed" : "back on") + "?")) return;
+      state.msgFor = "sessions";
+      const done = function (res) {
+        if (!res) return null;
+        if (window.ssTrack) window.ssTrack("session_email", n.kind);
+        state.notice = null; state.noticePreview = null; state.msgFor = "sessions";
+        state.msg = { bad: false, text: "Done: the email about the " + n.name + " on " + uk(n.date) + " is going to " + res.result.recipients + " addresses. It takes a few minutes; the status below changes to \"emailed\" when it has gone." };
+        render(); watchNotice(); return res;
+      };
+      call(Object.assign({ action: "sendNotice" }, noticeBody())).then(function (res) {
+        if (!res && state.msg && state.msg.text === "same-notice") {
+          state.msg = null;
+          if (!window.confirm("An email saying this has already been sent for this session. Send it again?")) { render(); return null; }
+          return call(Object.assign({ action: "sendNotice", repeatOk: true }, noticeBody()));
+        }
+        return res;
+      }).then(done);
+    }
+    else if (act === "saveClout") {
+      state.msgFor = "clout";
+      const cs = document.getElementById("cStart").value, ce = document.getElementById("cEnd").value;
+      if (cs && ce && ce < cs) { state.msg = { bad: true, text: "The last clout is before the first." }; render(); return; }
+      call({ action: "setSetting", key: "cloutStart", value: cs })
+        .then(function (res) { return res && call({ action: "setSetting", key: "cloutEnd", value: ce }, cs ? "Saved: clouts are on the Upcoming sessions list." : "Saved: no clout season set."); });
+    }
     else if (act === "sendTest") { state.msgFor = "emails"; call({ action: "sendTest" }, "Test summary sent to " + state.email + "."); }
     else if (act === "previewReminder") {
       const agb = state.selected;
@@ -1048,10 +1220,12 @@
     if (go) { ev.preventDefault(); const b = document.querySelector('[data-act="' + go + '"]'); if (b && !b.disabled) b.click(); }
   });
   document.addEventListener("input", function (ev) {
+    if (ev.target.id === "nReason" && state.notice) { state.notice.reason = ev.target.value; return; }
     if (ev.target.id === "search") { state.search = ev.target.value; state.focusSearch = true; render(); }
   });
   document.addEventListener("change", function (ev) {
     if (ev.target.id === "uploadFile" && ev.target.files && ev.target.files[0]) uploadFile(ev.target.files[0]);
+    if (ev.target.name === "nKind" && state.notice) { state.notice.kind = ev.target.value; state.noticePreview = null; render(); }
   });
 
   // ---------------------------------------------------------------- upload
