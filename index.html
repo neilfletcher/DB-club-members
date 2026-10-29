@@ -200,7 +200,7 @@
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; margin: 10px 0 14px; }
   .field label { display: block; font-size: 0.74rem; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.02em; }
   .field .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-  .field input { width: 100%; }
+  .field input, .field select { width: 100%; }
   .field .row input { width: auto; flex: 1 1 140px; }
   @media (max-width: 600px) {
     table.sess thead { display: none; }
@@ -270,7 +270,7 @@
 (function () {
   "use strict";
   const SERVICE_URL = String(window.MEMBERS_SERVICE_URL || "").trim();
-  const NEEDS_SERVICE = 11; // the members-service.gs version this page was built for
+  const NEEDS_SERVICE = 12; // the members-service.gs version this page was built for
   const GOOGLE_CLIENT_ID = String(window.MEMBERS_GOOGLE_CLIENT_ID || "").trim();
 
   const TABS = [
@@ -278,6 +278,7 @@
     { key: "members", label: "Members" },
     { key: "range", label: "Cleared to shoot" },
     { key: "sessions", label: "Sessions" },
+    { key: "keys", label: "Keys" },
     { key: "import", label: "Import" },
     { key: "emails", label: "Emails" }
   ];
@@ -357,7 +358,7 @@
       });
   }
 
-  const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1, merge: 1, sendNotice: 1 };
+  const WRITES = { update: 1, duesMany: 1, add: 1, upload: 1, setSetting: 1, merge: 1, sendNotice: 1, keyIssue: 1, keyReturn: 1 };
   function newRid() {
     try { return crypto.randomUUID(); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
   }
@@ -570,6 +571,7 @@
       tile("AGB expired or lapsed", agbGone, agbGone ? "bad" : "", "agbgone", "") +
       tile("Club dues owed", duesOwed, duesOwed ? "bad" : "", "dues", "not recorded or overdue") +
       "</div>";
+    html += keysLeftBanner(d);
     if (missing) html += '<div class="banner warn">' + missing + " member" + (missing === 1 ? " is" : "s are") + ' in the register but not in the latest export, although their AGB date hasn\'t passed. They may have moved club or cancelled. <button class="btn small" data-filter-go="missing">Show them</button></div>';
 
     const soon = act.filter(function (m) { return m.agbState === "due"; }).sort(function (a, b) { return a.agbDays - b.agbDays; });
@@ -670,7 +672,9 @@
       (m.duesPaid ? '<div><span class="k">Last dues payment</span>' + esc(uk(m.duesPaid)) + "</div>" : "") +
       (m.reminders ? '<div><span class="k">Reminders sent</span>' + esc(m.reminders) + "</div>" : "") +
       (m.updatedBy ? '<div><span class="k">Last changed</span>' + esc(m.updatedBy) + "</div>" : "") +
+      keysHeld(d, m).map(function (k) { return '<div><span class="k">Container key</span>' + esc(k.key) + " since " + esc(uk(k.given)) + "</div>"; }).join("") +
       "</div>";
+    if (m.left && keysHeld(d, m).length) html += '<div class="banner warn">' + esc(m.first || name(m)) + " has left the club but still has " + esc(keysHeld(d, m).map(function (k) { return k.key; }).join(" and ")) + '. <button class="btn small" data-tab="keys">Keys</button></div>';
     html += '<div class="banner info no-print" style="margin-top:4px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
       "<strong>Record a club dues payment</strong> paid on " +
       '<input type="date" id="dPayment" value="' + todayLocal() + '"> <button class="btn primary small" data-act="recordPayment">Record payment</button></div>' +
@@ -915,6 +919,76 @@
     });
   }
 
+
+  // ---------------------------------------------------------------- keys
+  function keysHeld(d, m) { return d.keys ? d.keys.out.filter(function (k) { return k.agb && k.agb === m.agb; }) : []; }
+  function keysLeftBanner(d) {
+    const gone = d.keys ? d.keys.out.filter(function (k) { return k.left; }) : [];
+    if (!gone.length) return "";
+    return '<div class="banner warn"><strong>Key to get back:</strong> ' + gone.map(function (k) { return esc(k.holder) + " (" + esc(k.key) + ")"; }).join(", ") +
+      (gone.length === 1 ? " has" : " have") + ' left the club but still ' + (gone.length === 1 ? "has a key" : "have keys") + ' to the container. <button class="btn small" data-tab="keys">Keys</button></div>';
+  }
+  function keyForm() {
+    return state.keyForm || (state.keyForm = { key: "", agb: "", name: "", date: todayLocal(), notes: "" });
+  }
+  function viewKeys(d) {
+    const K = d.keys;
+    if (!K) return '<div class="banner bad">The membership service needs updating for the key register: deploy the latest members-service.gs.</div>';
+    let html = keysLeftBanner(d);
+    if (state.msg && state.msgFor === "keys") html += '<div class="banner ' + (state.msg.bad ? "bad" : "good") + '">' + esc(state.msg.text) + "</div>";
+    html += '<div class="card"><h2>Who has a key to the container</h2>' +
+      '<p class="card-note">' + (K.out.length ? K.out.length + " key" + (K.out.length === 1 ? " is" : "s are") + " out. " : "") + 'When a key comes back, press "Back"; when someone hands theirs straight to someone else, press "Pass on".</p>';
+    if (!K.out.length) html += '<p class="muted small">No keys recorded yet. Use "Give out a key" below for each key that\'s already out.</p>';
+    else {
+      html += '<div class="table-scroll"><table><thead><tr><th>Key</th><th>Who has it</th><th>Since</th><th>Notes</th></tr></thead><tbody>';
+      K.out.forEach(function (k) {
+        const tags = (k.left ? ' <span class="pill bad">Left the club</span>' : "") + (!k.member ? ' <span class="pill">Not on the register</span>' : "");
+        const contact = k.phone ? '<div class="why"><a href="tel:' + esc(k.phone.replace(/\s+/g, "")) + '">' + esc(k.phone) + "</a></div>" : k.email ? '<div class="why"><a href="mailto:' + esc(k.email) + '">' + esc(k.email) + "</a></div>" : "";
+        html += "<tr><td class=\"nowrap\"><strong>" + esc(k.key) + "</strong></td><td>" + (k.member ? '<a href="#" data-key-member="' + esc(k.agb) + '">' + esc(k.holder) + "</a>" : esc(k.holder)) + tags + contact +
+          '<div class="no-print" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn small" data-act="keyBack" data-id="' + esc(k.id) + '">Back</button><button class="btn small" data-act="keyPass" data-key="' + esc(k.key) + '">Pass on</button></div></td>' +
+          '<td class="nowrap">' + esc(uk(k.given)) + "</td><td>" + esc(k.notes) + "</td></tr>";
+        const r = state.keyBack;
+        if (r && r.id === k.id) {
+          html += '<tr><td colspan="4"><div class="banner info" style="margin:0">' +
+            "<strong>" + esc(k.key) + " from " + esc(k.holder) + "</strong>" +
+            '<div class="toolbar" style="margin:10px 0 8px">' +
+            [["returned", "Returned"], ["lost", "Lost"], ["mistake", "Entered by mistake"]].map(function (o) {
+              return '<label class="check"><input type="radio" name="kOutcome" value="' + o[0] + '"' + (r.outcome === o[0] ? " checked" : "") + "> " + o[1] + "</label>";
+            }).join("") + "</div>" +
+            (r.outcome === "mistake" ? '<p class="card-note" style="margin:0 0 8px">Takes this line off the list without counting it as a key that was handed out (it stays in the sheet\'s Keys tab and the Changes log).</p>'
+              : '<div class="toolbar" style="margin:0 0 8px"><label class="small" for="kBackDate">' + (r.outcome === "lost" ? "Reported lost on" : "Came back on") + '</label> <input type="date" id="kBackDate" value="' + esc(r.date) + '" max="' + esc(d.today) + '"></div>') +
+            '<button class="btn primary small" data-act="keyBackSave">Save</button> <button class="btn small" data-act="keyBackCancel">Cancel</button></div></td></tr>';
+        }
+      });
+      html += "</tbody></table></div>";
+    }
+    html += "</div>";
+
+    const f = keyForm();
+    const people = d.members.filter(function (m) { return !m.left; }).sort(byName);
+    const isOut = f.key && K.out.filter(function (k) { return k.key.toLowerCase() === f.key.trim().toLowerCase(); })[0];
+    html += '<div class="card" id="keyGiveCard"><h2>Give out a key</h2><p class="card-note">Record each key as it\'s handed over. Give each key a name or number you can tell apart (for example the number stamped on it, or "Key 1", "Key 2"). For keys already out, put the date they were given if you know it, or today\'s date.</p>' +
+      '<datalist id="kLabels">' + K.labels.map(function (l) { return '<option value="' + esc(l) + '">'; }).join("") + "</datalist>" +
+      '<div class="form-grid">' +
+      field("Key", '<input type="text" id="kKey" list="kLabels" maxlength="40" autocomplete="off" placeholder="e.g. Key 1" value="' + esc(f.key) + '">') +
+      field("Given to", '<select id="kWho"><option value="">Choose a member...</option>' + people.map(function (m) { return '<option value="' + esc(m.agb) + '"' + (f.agb === m.agb ? " selected" : "") + ">" + esc(m.last + ", " + m.first) + "</option>"; }).join("") +
+        '<option value="other"' + (f.agb === "other" ? " selected" : "") + ">Someone not on the register...</option></select>") +
+      (f.agb === "other" ? field("Their name", '<input type="text" id="kName" maxlength="80" autocomplete="off" placeholder="e.g. the landowner" value="' + esc(f.name) + '">') : "") +
+      field("Given on", '<input type="date" id="kDate" value="' + esc(f.date) + '" max="' + esc(d.today) + '">') +
+      field("Notes (optional)", '<input type="text" id="kNotes" maxlength="300" autocomplete="off" placeholder="e.g. deposit paid" value="' + esc(f.notes) + '">') +
+      "</div>" +
+      (isOut ? '<p class="msg bad small" style="margin:0 0 10px">' + esc(isOut.key) + " is recorded as with " + esc(isOut.holder) + ". Saving records it as passed from " + esc(isOut.holder) + " to the person above.</p>" : "") +
+      '<button class="btn primary" data-act="keyGive">' + (isOut ? "Record key passed on" : "Record key given") + "</button>" +
+      (f.key || f.agb || f.notes ? ' <button class="btn" data-act="keyClear">Clear</button>' : "") + "</div>";
+
+    html += '<div class="card"><h2>Keys that have come back</h2>' + (K.past.length ? '<div class="table-scroll"><table><thead><tr><th>Key</th><th>Who had it</th><th>From</th><th>To</th><th>What happened</th></tr></thead><tbody>' +
+      K.past.map(function (k) {
+        return "<tr><td class=\"nowrap\">" + esc(k.key) + "</td><td>" + esc(k.holder) + '</td><td class="nowrap">' + esc(uk(k.given)) + '</td><td class="nowrap">' + esc(uk(k.returned)) + "</td><td>" + (k.outcome === "lost" ? '<span class="pill bad">Lost</span>' : esc(k.outcome ? k.outcome.charAt(0).toUpperCase() + k.outcome.slice(1) : "Returned")) + "</td></tr>";
+      }).join("") + "</tbody></table></div>" : '<p class="muted small">None yet.</p>') +
+      '<p class="card-note" style="margin-bottom:0">Everything is kept on the Keys tab of the register\'s Google Sheet, and each change is in the Changes log (and on the member\'s History).</p></div>';
+    return html;
+  }
+
   // ---------------------------------------------------------------- render
   function render() {
     document.getElementById("busy").hidden = !state.busy;
@@ -937,14 +1011,14 @@
     tabsEl.hidden = false;
     const notCleared = d.members.filter(function (m) { return !m.left && !m.cleared; }).length;
     tabsEl.innerHTML = TABS.map(function (t) {
-      const count = t.key === "members" ? d.members.filter(function (m) { return !m.left; }).length : t.key === "range" && notCleared ? notCleared + " not" : "";
+      const count = t.key === "members" ? d.members.filter(function (m) { return !m.left; }).length : t.key === "range" && notCleared ? notCleared + " not" : t.key === "keys" && d.keys && d.keys.out.length ? d.keys.out.length + " out" : "";
       return '<button role="tab" data-tab="' + t.key + '" aria-selected="' + (t.key === state.tab) + '">' + esc(t.label) + (count !== "" ? '<span class="count">' + esc(count) + "</span>" : "") + "</button>";
     }).join("");
     head.innerHTML = '<span class="muted small">' + esc(state.email || "") + '</span> <button class="btn" data-act="refresh">Refresh</button> <button class="btn" data-act="signout">Sign out</button>';
     status.textContent = state.busy ? String(state.busy) : "Today " + uk(d.today) + (d.lastExportDate ? " · export of " + uk(d.lastExportDate) : "");
     const tn = document.getElementById("timingNote");
     if (tn) tn.textContent = state.timing ? " Last answer: " + (state.timing.page / 1000).toFixed(1) + "s (service " + (state.timing.service / 1000).toFixed(1) + "s)." : "";
-    const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails, sessions: viewSessions }[state.tab];
+    const view = { overview: viewOverview, members: viewMembers, range: viewRange, import: viewImport, emails: viewEmails, sessions: viewSessions, keys: viewKeys }[state.tab];
     let html = "";
     if (!(d.serviceVersion >= NEEDS_SERVICE)) html += '<div class="banner bad"><strong>The membership service is an older version than this page</strong>, so some changes (such as recording payments) won\'t save and it will be slower. ' +
       "In the Apps Script editor: paste in the latest members-service.gs, Save, then Deploy &gt; Manage deployments &gt; Edit (pencil) &gt; Version: <strong>New version</strong> &gt; Deploy. " +
@@ -984,6 +1058,15 @@
         .forEach(function (m) { state.picked[m.agb] = t.checked; });
       render(); return;
     }
+    const km = t.closest("[data-key-member]");
+    if (km) {
+      ev.preventDefault();
+      state.selected = km.dataset.keyMember; state.msg = null; state.msgFor = null; state.reminderPreview = null; state.history = null; state.filter = "all";
+      setTab("members");
+      const el = document.getElementById("detail");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     const open = t.closest("[data-open]");
     if (open && !t.closest("input, a, button")) {
       state.selected = open.dataset.open; state.msg = null; state.msgFor = null; state.reminderPreview = null; state.history = null;
@@ -998,7 +1081,7 @@
     if (!b || b.disabled) return;
     const act = b.dataset.act;
     // While a change is being saved, ignore further save clicks.
-    if (state.busy && /^(recordPayment|saveDetail|bulkDues|addSave|sendReminder|testReminder|sendTest|checkNow|merge|sendNotice|testNotice|previewNotice|saveClout)$/.test(act)) return;
+    if (state.busy && /^(recordPayment|saveDetail|bulkDues|addSave|sendReminder|testReminder|sendTest|checkNow|merge|sendNotice|testNotice|previewNotice|saveClout|keyGive|keyBackSave)$/.test(act)) return;
     if (act === "requestCode") {
       const email = (document.getElementById("codeEmail").value || "").trim();
       state.code = { email: email, busy: true };
@@ -1183,6 +1266,52 @@
         return res;
       }).then(done);
     }
+    else if (act === "keyBack") {
+      state.keyBack = { id: b.dataset.id, outcome: "returned", date: todayLocal() }; state.msg = null; state.msgFor = null; render();
+    }
+    else if (act === "keyBackCancel") { state.keyBack = null; render(); }
+    else if (act === "keyBackSave") {
+      const r = state.keyBack; if (!r) return;
+      const de = document.getElementById("kBackDate");
+      if (de) r.date = de.value;
+      state.msgFor = "keys";
+      if (r.outcome !== "mistake" && !r.date) { state.msg = { bad: true, text: "Choose the date." }; render(); return; }
+      call({ action: "keyReturn", id: r.id, outcome: r.outcome, date: r.outcome === "mistake" ? "" : r.date }, function (res) {
+        const x = res.result;
+        return x.outcome === "lost" ? x.key + " recorded as lost by " + x.holder + "." : x.outcome === "entered by mistake" ? "Removed: " + x.key + " with " + x.holder + "." : x.key + " is back from " + x.holder + ".";
+      }).then(function (res) { if (res) { state.keyBack = null; window.ssTrack && window.ssTrack("key_back", r.outcome); render(); } });
+    }
+    else if (act === "keyPass") {
+      const f = keyForm();
+      f.key = b.dataset.key; f.agb = ""; f.name = ""; f.date = todayLocal(); f.notes = "";
+      state.keyBack = null; state.msg = null; state.msgFor = null; render();
+      const card = document.getElementById("keyGiveCard");
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+      const who = document.getElementById("kWho"); if (who) who.focus();
+    }
+    else if (act === "keyClear") { state.keyForm = null; state.msg = null; render(); }
+    else if (act === "keyGive") {
+      const f = keyForm();
+      state.msgFor = "keys";
+      const label = f.key.replace(/\s+/g, " ").trim();
+      if (!label) { state.msg = { bad: true, text: "Say which key (for example \"Key 1\")." }; render(); return; }
+      if (!f.agb) { state.msg = { bad: true, text: "Choose who the key was given to." }; render(); return; }
+      if (f.agb === "other" && !f.name.trim()) { state.msg = { bad: true, text: "Put the name of the person who has the key." }; render(); return; }
+      if (!f.date) { state.msg = { bad: true, text: "Choose the date the key was given." }; render(); return; }
+      const out = state.data.keys.out.find(function (k) { return k.key.toLowerCase() === label.toLowerCase(); });
+      const toName = f.agb === "other" ? f.name.trim() : name(state.data.members.find(function (m) { return m.agb === f.agb; }) || {});
+      if (out && !window.confirm(out.key + " is recorded as with " + out.holder + ". Record it as passed from " + out.holder + " to " + toName + " on " + uk(f.date) + "?")) return;
+      const body = { action: "keyIssue", key: label, date: f.date, notes: f.notes.trim() };
+      if (f.agb === "other") body.name = f.name.trim(); else body.agb = f.agb;
+      if (out) body.passOn = true;
+      call(body, function (res) {
+        const x = res.result;
+        return x.passedFrom ? x.key + " passed from " + x.passedFrom + " to " + x.holder + "." : x.key + " recorded as with " + x.holder + ".";
+      }).then(function (res) {
+        if (res) { state.keyForm = null; window.ssTrack && window.ssTrack("key_given", out ? "passed_on" : "new"); render(); }
+        else if (state.msg && /^keyout:/.test(state.msg.text)) { state.msg = { bad: true, text: label + " has just been recorded as with " + state.msg.text.slice(7) + " (by someone else). Check the list above, then try again." }; render(); }
+      });
+    }
     else if (act === "saveClout") {
       state.msgFor = "clout";
       const cs = document.getElementById("cStart").value, ce = document.getElementById("cEnd").value;
@@ -1221,11 +1350,23 @@
   });
   document.addEventListener("input", function (ev) {
     if (ev.target.id === "nReason" && state.notice) { state.notice.reason = ev.target.value; return; }
+    const kf = { kKey: "key", kName: "name", kDate: "date", kNotes: "notes" }[ev.target.id];
+    if (kf) {
+      const f = keyForm(); const before = f.key; f[kf] = ev.target.value;
+      // Re-draw only when the "already out" warning might change, keeping the cursor in place.
+      if (kf === "key" && state.data && state.data.keys) {
+        const outNow = function (v) { return state.data.keys.out.some(function (k) { return k.key.toLowerCase() === v.trim().toLowerCase(); }); };
+        if (outNow(before) !== outNow(f.key)) { const pos = ev.target.selectionStart; render(); const el = document.getElementById("kKey"); if (el) { el.focus(); el.setSelectionRange(pos, pos); } }
+      }
+      return;
+    }
     if (ev.target.id === "search") { state.search = ev.target.value; state.focusSearch = true; render(); }
   });
   document.addEventListener("change", function (ev) {
     if (ev.target.id === "uploadFile" && ev.target.files && ev.target.files[0]) uploadFile(ev.target.files[0]);
     if (ev.target.name === "nKind" && state.notice) { state.notice.kind = ev.target.value; state.noticePreview = null; render(); }
+    if (ev.target.id === "kWho") { keyForm().agb = ev.target.value; render(); if (ev.target.value === "other") { const n = document.getElementById("kName"); if (n) n.focus(); } }
+    if (ev.target.name === "kOutcome" && state.keyBack) { const de = document.getElementById("kBackDate"); if (de) state.keyBack.date = de.value; state.keyBack.outcome = ev.target.value; render(); }
   });
 
   // ---------------------------------------------------------------- upload
